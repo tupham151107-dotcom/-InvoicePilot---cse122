@@ -1,0 +1,5 @@
+/* Giao diện riêng cho phần phụ trách Quản lý và Quản trị viên. */
+.workspace-dashboard--manager .metric-symbol { background: #ecf1ff; color: #4d62c8; }
+.workspace-dashboard--manager .panel { border-top-color: #dce3fb; }
+.workspace-dashboard--admin .metric-symbol { background: #f0ebff; color: #7655c6; }
+.workspace-dashboard--admin .panel { border-top-color: #e5dcfb; }
