@@ -95,7 +95,8 @@ h1, h2, h3, p { margin-top: 0; }
 .notification-bell svg { width: 17px; height: 17px; }
 .notification-bell .dot { position: absolute; top: 7px; right: 7px; width: 7px; height: 7px; border: 1px solid #fff; border-radius: 50%; background: #ed6d6d; }
 .shared-avatar { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; color: var(--color-navy); background: var(--color-primary-soft); font-size: 10px; font-weight: 700; }
-.shared-user-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; color: var(--color-text); line-height: 1.2; }
+.shared-user-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 0; color: var(--color-text); line-height: 1.1; }
+.shared-user-meta strong, .shared-user-meta small { display: block; margin: 0; }
 .shared-user-meta strong { font-size: 10px; }
 .shared-user-meta small { color: var(--color-muted); font-size: 8px; }
 .shared-content { max-width: 1440px; margin: auto; padding: 32px; }
@@ -185,3 +186,9 @@ h1, h2, h3, p { margin-top: 0; }
   .field-wide { grid-column: auto; }
   .form-row { font-size: 9px; }
 }
+
+.shared-user-meta { gap: 0; line-height: 1.05; flex: 0 0 auto; }
+.shared-user-meta strong { white-space: nowrap; line-height: 1.05; }
+.shared-user-meta small { line-height: 1.05; margin-top: 2px; }
+
+.shared-header-actions{position:relative}.shared-search-results{position:absolute;top:48px;left:0;z-index:15;width:min(380px,calc(100vw - 32px));max-height:360px;overflow:auto;padding:6px;border:1px solid var(--color-border);border-radius:12px;background:#fff;box-shadow:0 14px 38px rgba(13,41,75,.16)}.shared-search-results[hidden]{display:none}.shared-search-result{display:grid!important;width:100%!important;height:auto!important;gap:4px;justify-items:start;padding:10px 11px!important;border:0!important;border-radius:8px!important;text-align:left}.shared-search-result:hover{background:#f1f5ff!important}.shared-search-result strong{color:var(--color-navy);font-size:10px}.shared-search-result small,.shared-search-empty{color:var(--color-muted);font-size:9px}.shared-search-empty{margin:0;padding:12px}
