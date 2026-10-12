@@ -37,12 +37,14 @@
           <option value="sales">Kinh doanh</option>
         </select>
         <button class="button button-primary" type="submit">Đăng nhập <span aria-hidden="true">→</span></button>
-        <div class="demo-note"><strong>Tài khoản demo</strong><br />demo@invoicepilot.vn · invoice123<br /><small>Chọn một trong bốn vai trò để mở giao diện tương ứng.</small></div>
+        <div class="demo-note"><strong>Đăng nhập</strong><br /><small>Tài khoản cần được tạo trong Supabase. Chọn đúng vai trò đã được cấp cho tài khoản.</small></div>
         <div class="form-footer">Chưa có tài khoản? <a href="signup.html">Đăng ký doanh nghiệp</a></div>
         <div class="form-message" id="login-message" role="status" aria-live="polite"></div>
       </form>
     </section>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="common.js"></script>
 </body>
 </html>
