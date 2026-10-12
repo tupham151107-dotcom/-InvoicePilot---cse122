@@ -7,8 +7,8 @@ Prototype quản lý hóa đơn và công nợ bằng HTML, CSS và JavaScript t
 | Thành viên | Phân hệ | Công việc phụ trách |
 |---|---|---|
 | **Phạm Đình Tú** | Dùng chung, Quản trị viên, Quản lý | Làm đăng nhập/đăng ký, xác thực và điều hướng; thành phần giao diện dùng chung; màn hình quản trị doanh nghiệp, thành viên và quyền; màn hình quản lý theo dõi hóa đơn, công nợ, dòng tiền và báo cáo. |
-| **Thành viên 2 (`anhai27`)** | Kế toán | Làm tổng quan kế toán; tạo và quản lý hóa đơn; ghi nhận, đối chiếu thanh toán; tra cứu khách hàng, công nợ và chi tiết hóa đơn. |
-| **Thành viên 3 (`kiskypham`)** | Kinh doanh | Làm tổng quan kinh doanh; quản lý khách hàng, khách hàng tiềm năng và cơ hội; tạo nhắc việc, theo dõi chăm sóc khách hàng và chuyển thông tin cần thiết cho Kế toán. |
+| **Nguyễn Hải An (`anhai27`)** | Kế toán | Làm tổng quan kế toán; tạo và quản lý hóa đơn; ghi nhận, đối chiếu thanh toán; tra cứu khách hàng, công nợ và chi tiết hóa đơn. |
+| **Phạm Trần Gia Khánh (`kiskypham`)** | Kinh doanh | Làm tổng quan kinh doanh; quản lý khách hàng, khách hàng tiềm năng và cơ hội; tạo nhắc việc, theo dõi chăm sóc khách hàng và chuyển thông tin cần thiết cho Kế toán. |
 
 ## Cấu trúc dự án
 
