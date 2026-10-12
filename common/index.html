@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#102d52" />
+  <title>Đăng nhập · 19 InvoicePilot</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body class="auth-page">
+  <main class="auth-layout">
+    <section class="auth-brand-panel">
+      <a class="brand" href="../index.html"><span class="brand-mark">IP</span><span>InvoicePilot</span></a>
+      <div class="auth-copy">
+        <span class="eyebrow">QUẢN LÝ HÓA ĐƠN & CÔNG NỢ</span>
+        <h1>Rõ từng hóa đơn.<br />Chủ động từng khoản thu.</h1>
+        <p>Một không gian làm việc chung giúp đội ngũ theo dõi hóa đơn, quản lý công nợ và nắm bắt dòng tiền.</p>
+      </div>
+      <div class="auth-footnote">19 InvoicePilot · Bản demo học tập</div>
+    </section>
+    <section class="auth-form-panel">
+      <form class="login-card" id="login-form">
+        <span class="eyebrow">CHÀO MỪNG TRỞ LẠI</span>
+        <h2>Đăng nhập</h2>
+        <p class="muted">Nhập tài khoản để vào không gian làm việc.</p>
+        <label for="login-email">Email</label>
+        <input id="login-email" name="email" type="email" autocomplete="username" placeholder="ten@congty.vn" required />
+        <label for="login-password">Mật khẩu</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required />
+        <div class="form-row"><label class="check-label"><input type="checkbox" checked /> Ghi nhớ đăng nhập</label><a href="#forgot" id="forgot-link">Quên mật khẩu?</a></div>
+        <label for="login-role">Vai trò</label>
+        <select id="login-role" name="role" required>
+          <option value="" disabled selected>Chọn vai trò</option>
+          <option value="admin">Quản trị viên</option>
+          <option value="manager">Quản lý</option>
+          <option value="accountant">Kế toán</option>
+          <option value="sales">Kinh doanh</option>
+        </select>
+        <button class="button button-primary" type="submit">Đăng nhập <span aria-hidden="true">→</span></button>
+        <div class="demo-note"><strong>Tài khoản demo</strong><br />demo@invoicepilot.vn · invoice123<br /><small>Chọn một trong bốn vai trò để mở giao diện tương ứng.</small></div>
+        <div class="form-footer">Chưa có tài khoản? <a href="signup.html">Đăng ký doanh nghiệp</a></div>
+        <div class="form-message" id="login-message" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+  </main>
+  <script src="common.js"></script>
+</body>
+</html>
