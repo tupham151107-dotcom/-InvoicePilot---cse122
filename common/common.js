@@ -240,9 +240,10 @@
     const company = String(data.get('company') || '').trim();
     const tax = String(data.get('tax') || '').trim();
     const owner = String(data.get('owner') || '').trim();
+    const role = String(data.get('role') || '');
     const password = String(data.get('password') || '');
-    if (!company || !tax || !owner || !email) {
-      message.textContent = 'Vui lòng điền đầy đủ thông tin doanh nghiệp và tài khoản.';
+    if (!company || !tax || !owner || !email || !['admin', 'manager', 'accountant', 'sales'].includes(role)) {
+      message.textContent = 'Vui lòng điền đủ thông tin và chọn vai trò.';
       return;
     }
     if (password.length < 8) {
@@ -267,7 +268,8 @@
         options: { data: {
           company_name: company,
           tax_code: tax,
-          full_name: owner
+          full_name: owner,
+          role
         }, ...(emailRedirectUrl() ? { emailRedirectTo: emailRedirectUrl() } : {}) }
       });
       if (error) throw error;
@@ -276,7 +278,7 @@
       }
       message.style.color = 'var(--color-success)';
       message.textContent = authData.session
-        ? 'Đăng ký thành công. Tài khoản Quản trị viên và hồ sơ doanh nghiệp đã được lưu; bạn có thể đăng nhập.'
+        ? `Đăng ký thành công. Hồ sơ ${window.IPCommon.roleLabel(role)} và doanh nghiệp đã được lưu; bạn có thể đăng nhập.`
         : 'Đã tạo tài khoản. Hãy xác nhận email theo liên kết Supabase gửi tới, sau đó đăng nhập.';
       signupForm.reset();
       if (authData.session) window.setTimeout(() => { window.location.href = 'index.html'; }, 1600);

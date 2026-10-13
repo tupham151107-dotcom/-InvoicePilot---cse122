@@ -17,14 +17,17 @@
       <label class="field-group">Mã số thuế<input name="tax" placeholder="0312345678" required /></label>
       <label class="field-group">Người đại diện<input name="owner" placeholder="Nguyễn Minh Quân" required /></label>
       <label class="field-group field-wide">Email quản trị<input type="email" name="email" placeholder="quan@congty.vn" required /></label>
+      <label class="field-group field-wide">Vai trò<select name="role" required><option value="" selected disabled>Chọn vai trò</option><option value="admin">Quản trị viên</option><option value="manager">Quản lý</option><option value="accountant">Kế toán</option><option value="sales">Kinh doanh</option></select></label>
       <label class="field-group">Mật khẩu<input type="password" name="password" minlength="8" required /></label>
       <label class="field-group">Xác nhận mật khẩu<input type="password" name="confirm" minlength="8" required /></label>
       <label class="check-label field-wide"><input type="checkbox" required /> Tôi đồng ý với điều khoản sử dụng và chính sách bảo mật.</label>
-      <button class="button button-primary field-wide" type="submit">Tạo không gian doanh nghiệp</button>
+      <button class="button button-primary field-wide" type="submit">Tạo tài khoản</button>
     </form>
     <div class="form-footer">Đã có tài khoản? <a href="index.html">Đăng nhập</a></div>
     <div class="form-message" id="signup-message" role="status" aria-live="polite"></div>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="common.js"></script>
 </body>
 </html>
