@@ -107,6 +107,11 @@
       if (data?.error) throw new Error(data.error);
       return data;
     },
+    async updateOwnPassword(password) {
+      if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) throw error;
+    },
     async requireRole(role) {
       const loginUrl = '../common/index.html';
       if (!supabaseClient) {
