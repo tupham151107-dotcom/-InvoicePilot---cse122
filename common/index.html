@@ -28,16 +28,8 @@
         <label for="login-password">Mật khẩu</label>
         <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required />
         <div class="form-row"><label class="check-label"><input type="checkbox" checked /> Ghi nhớ đăng nhập</label><a href="#forgot" id="forgot-link">Quên mật khẩu?</a></div>
-        <label for="login-role">Vai trò</label>
-        <select id="login-role" name="role" required>
-          <option value="" disabled selected>Chọn vai trò</option>
-          <option value="admin">Quản trị viên</option>
-          <option value="manager">Quản lý</option>
-          <option value="accountant">Kế toán</option>
-          <option value="sales">Kinh doanh</option>
-        </select>
         <button class="button button-primary" type="submit">Đăng nhập <span aria-hidden="true">→</span></button>
-        <div class="demo-note"><strong>Đăng nhập</strong><br /><small>Tài khoản cần được tạo trong Supabase. Chọn đúng vai trò đã được cấp cho tài khoản.</small></div>
+        <div class="demo-note"><strong>Đăng nhập</strong><br /><small>Hệ thống tự mở đúng giao diện theo vai trò đã cấp cho tài khoản.</small></div>
         <div class="form-footer">Chưa có tài khoản? <a href="signup.html">Đăng ký doanh nghiệp</a></div>
         <div class="form-message" id="login-message" role="status" aria-live="polite"></div>
       </form>

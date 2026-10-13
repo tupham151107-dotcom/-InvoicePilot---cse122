@@ -185,10 +185,9 @@
     const data = new FormData(loginForm);
     const email = String(data.get('email') || '').trim();
     const password = String(data.get('password') || '');
-    const requestedRole = String(data.get('role') || '');
     const message = document.getElementById('login-message');
-    if (!requestedRole || password.length < 1 || !email.includes('@')) {
-      message.textContent = 'Vui lòng nhập email, mật khẩu và chọn vai trò.';
+    if (password.length < 1 || !email.includes('@')) {
+      message.textContent = 'Vui lòng nhập email và mật khẩu.';
       return;
     }
     if (!supabaseClient) {
@@ -204,10 +203,6 @@
       const { data: profile, error: profileError } = await supabaseClient
         .from('profiles').select('role, full_name, company_name').eq('id', authData.user.id).single();
       if (profileError) throw profileError;
-      if (profile.role !== requestedRole) {
-        await supabaseClient.auth.signOut();
-        throw new Error('Vai trò đã chọn không khớp với tài khoản này.');
-      }
       window.IPCommon.goToRole(profile.role, authData.user.email);
     } catch (error) {
       await supabaseClient.auth.signOut().catch(() => {});
@@ -240,10 +235,10 @@
     const company = String(data.get('company') || '').trim();
     const tax = String(data.get('tax') || '').trim();
     const owner = String(data.get('owner') || '').trim();
-    const role = String(data.get('role') || '');
+    const role = 'admin';
     const password = String(data.get('password') || '');
-    if (!company || !tax || !owner || !email || !['admin', 'manager', 'accountant', 'sales'].includes(role)) {
-      message.textContent = 'Vui lòng điền đủ thông tin và chọn vai trò.';
+    if (!company || !tax || !owner || !email) {
+      message.textContent = 'Vui lòng điền đầy đủ thông tin doanh nghiệp và tài khoản.';
       return;
     }
     if (password.length < 8) {
