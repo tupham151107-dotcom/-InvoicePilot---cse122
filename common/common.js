@@ -18,11 +18,53 @@
     return state;
   }
 
+  function accountStorageKey(name) {
+    const userId = window.IP_AUTH_PROFILE?.id;
+    return userId ? `${name}:${userId}` : name;
+  }
+
+  const supabaseClient = (() => {
+    const config = window.INVOICEPILOT_SUPABASE;
+    if (!config?.url || !config?.publishableKey || !window.supabase?.createClient) return null;
+    return window.supabase.createClient(config.url, config.publishableKey);
+  })();
+
+  function friendlyAuthError(error) {
+    const text = String(error?.message || '');
+    if (/invalid login credentials/i.test(text)) return 'Email hoặc mật khẩu chưa chính xác.';
+    if (/email not confirmed/i.test(text)) return 'Bạn cần xác nhận email trước khi đăng nhập.';
+    if (/user already registered/i.test(text)) return 'Email này đã được đăng ký.';
+    if (/password/i.test(text) && /least|short|characters/i.test(text)) return 'Mật khẩu chưa đủ độ dài yêu cầu.';
+    if (/email rate limit/i.test(text)) return 'Bạn thao tác quá nhanh. Hãy đợi một lúc rồi thử lại.';
+    if (/fetch|network/i.test(text)) return 'Không kết nối được Supabase. Kiểm tra mạng rồi thử lại.';
+    return text || 'Không thể kết nối Supabase. Hãy thử lại.';
+  }
+
+  function showLoginNotice(message) {
+    try { sessionStorage.setItem('invoicepilot-auth-notice', message); } catch { /* Storage can be unavailable in private browsing. */ }
+  }
+
+  function takeLoginNotice() {
+    try {
+      const message = sessionStorage.getItem('invoicepilot-auth-notice');
+      sessionStorage.removeItem('invoicepilot-auth-notice');
+      return message;
+    } catch { return ''; }
+  }
+
+  function emailRedirectUrl() {
+    if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+      return new URL('index.html', window.location.href).href;
+    }
+    return window.INVOICEPILOT_SUPABASE?.authRedirectUrl || undefined;
+  }
+
   window.IPCommon = {
     money(amount) {
       return new Intl.NumberFormat('vi-VN').format(Number(amount) || 0) + ' ₫';
     },
     saveDemoState,
+    accountStorageKey,
     roleLabel(role) {
       return ({ admin: 'Quản trị viên', manager: 'Quản lý', accountant: 'Kế toán', sales: 'Kinh doanh' })[role] || 'Thành viên';
     },
@@ -33,16 +75,54 @@
       const state = readDemoState();
       saveDemoState({ notificationsRead: { ...(state.notificationsRead || {}), [role]: true } });
     },
+    async requireRole(role) {
+      const loginUrl = '../common/index.html';
+      if (!supabaseClient) {
+        showLoginNotice('Chưa kết nối được Supabase. Hãy kiểm tra cấu hình đăng nhập.');
+        window.location.replace(loginUrl);
+        return null;
+      }
+      try {
+        const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session?.user) {
+          showLoginNotice('Vui lòng đăng nhập để vào khu vực này.');
+          window.location.replace(loginUrl);
+          return null;
+        }
+        const { data: profile, error: profileError } = await supabaseClient
+          .from('profiles').select('role, full_name, company_name, tax_code').eq('id', session.user.id).single();
+        if (profileError) throw profileError;
+        if (profile.role !== role) {
+          await supabaseClient.auth.signOut();
+          showLoginNotice('Vai trò của tài khoản không có quyền vào khu vực này.');
+          window.location.replace(loginUrl);
+          return null;
+        }
+        window.IP_AUTH_PROFILE = { ...profile, id: session.user.id, email: session.user.email || '' };
+        return window.IP_AUTH_PROFILE;
+      } catch (error) {
+        console.error('Không thể kiểm tra phiên InvoicePilot:', error);
+        showLoginNotice('Không đọc được hồ sơ tài khoản. Hãy đăng nhập lại hoặc kiểm tra cấu hình Supabase.');
+        window.location.replace(loginUrl);
+        return null;
+      }
+    },
+    async signOut() {
+      if (supabaseClient) await supabaseClient.auth.signOut();
+      window.IP_AUTH_PROFILE = null;
+    },
     mountShell({ role, active, nav, searchItems = [] }) {
       const app = document.getElementById('workspace');
       if (!app) return;
       const label = this.roleLabel(role);
       const displayNames = { admin: 'Admin', manager: 'Nguyễn Nguyên', accountant: 'Lê Thu Hà', sales: 'Nguyễn Minh Anh' };
-      const displayName = displayNames[role] || label;
+      const displayName = window.IP_AUTH_PROFILE?.full_name || displayNames[role] || label;
+      const companyName = window.IP_AUTH_PROFILE?.company_name || 'Doanh nghiệp của bạn';
       app.innerHTML = `
         <aside class="shared-sidebar">
           <a class="brand" href="../common/index.html"><span class="brand-mark">IP</span><span>InvoicePilot</span></a>
-          <div class="shared-company"><strong>Công ty Minh Phát</strong><small>Không gian làm việc</small></div>
+          <div class="shared-company"><strong>${companyName}</strong><small>Không gian làm việc</small></div>
           <nav class="shared-nav" aria-label="Điều hướng chính">
             ${nav.map(item => `<a class="shared-nav-link ${item.label === active ? 'active' : ''}" href="${item.href}"><span aria-hidden="true">${item.icon || '•'}</span>${item.label}</a>`).join('')}
           </nav>
@@ -81,7 +161,9 @@
         });
         searchInput.addEventListener('keydown', event => { if (event.key === 'Escape') resultPanel.hidden = true; });
       }
-      app.querySelector('[data-shared-logout]')?.addEventListener('click', () => { window.location.href = '../common/index.html'; });
+      app.querySelector('[data-shared-logout]')?.addEventListener('click', async () => {
+        try { await this.signOut(); } finally { window.location.href = '../common/index.html'; }
+      });
     },
     goToRole(role, email) {
       saveDemoState({
@@ -96,38 +178,113 @@
   };
 
   const loginForm = document.getElementById('login-form');
-  if (loginForm) loginForm.addEventListener('submit', event => {
+  const loginMessage = document.getElementById('login-message');
+  if (loginMessage) loginMessage.textContent = takeLoginNotice();
+  if (loginForm) loginForm.addEventListener('submit', async event => {
     event.preventDefault();
     const data = new FormData(loginForm);
     const email = String(data.get('email') || '').trim();
     const password = String(data.get('password') || '');
-    const role = String(data.get('role') || 'manager');
+    const requestedRole = String(data.get('role') || '');
     const message = document.getElementById('login-message');
-    if (password.length < 1 || !email.includes('@')) {
-      message.textContent = 'Vui lòng nhập email và mật khẩu hợp lệ.';
+    if (!requestedRole || password.length < 1 || !email.includes('@')) {
+      message.textContent = 'Vui lòng nhập email, mật khẩu và chọn vai trò.';
       return;
     }
-    window.IPCommon.goToRole(role, email);
+    if (!supabaseClient) {
+      message.textContent = 'Chưa cấu hình kết nối Supabase. Hãy thêm URL và publishable key vào common/supabase-config.js.';
+      return;
+    }
+    const button = loginForm.querySelector('[type="submit"]');
+    button.disabled = true;
+    message.textContent = 'Đang xác thực…';
+    try {
+      const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+      const { data: profile, error: profileError } = await supabaseClient
+        .from('profiles').select('role, full_name, company_name').eq('id', authData.user.id).single();
+      if (profileError) throw profileError;
+      if (profile.role !== requestedRole) {
+        await supabaseClient.auth.signOut();
+        throw new Error('Vai trò đã chọn không khớp với tài khoản này.');
+      }
+      window.IPCommon.goToRole(profile.role, authData.user.email);
+    } catch (error) {
+      await supabaseClient.auth.signOut().catch(() => {});
+      message.textContent = friendlyAuthError(error);
+      button.disabled = false;
+    }
   });
 
   const forgotLink = document.getElementById('forgot-link');
   if (forgotLink) forgotLink.addEventListener('click', event => {
     event.preventDefault();
     const message = document.getElementById('login-message');
-    message.textContent = 'Liên hệ quản trị viên để đặt lại mật khẩu trong bản demo.';
+    if (supabaseClient) {
+      const email = document.getElementById('login-email')?.value.trim();
+      if (!email) { message.textContent = 'Nhập email trước để nhận liên kết đặt lại mật khẩu.'; return; }
+      supabaseClient.auth.resetPasswordForEmail(email, emailRedirectUrl() ? { redirectTo: emailRedirectUrl() } : undefined)
+        .then(({ error }) => { message.textContent = error ? friendlyAuthError(error) : 'Đã gửi hướng dẫn đặt lại mật khẩu tới email của bạn.'; })
+        .catch(error => { message.textContent = friendlyAuthError(error); });
+      return;
+    }
+    message.textContent = 'Nhập email rồi dùng chức năng quên mật khẩu sau khi cấu hình Supabase.';
   });
 
   const signupForm = document.getElementById('signup-form');
-  if (signupForm) signupForm.addEventListener('submit', event => {
+  if (signupForm) signupForm.addEventListener('submit', async event => {
     event.preventDefault();
     const data = new FormData(signupForm);
     const message = document.getElementById('signup-message');
-    if (data.get('password') !== data.get('confirm')) {
+    const email = String(data.get('email') || '').trim().toLowerCase();
+    const company = String(data.get('company') || '').trim();
+    const tax = String(data.get('tax') || '').trim();
+    const owner = String(data.get('owner') || '').trim();
+    const password = String(data.get('password') || '');
+    if (!company || !tax || !owner || !email) {
+      message.textContent = 'Vui lòng điền đầy đủ thông tin doanh nghiệp và tài khoản.';
+      return;
+    }
+    if (password.length < 8) {
+      message.textContent = 'Mật khẩu cần có ít nhất 8 ký tự.';
+      return;
+    }
+    if (password !== data.get('confirm')) {
       message.textContent = 'Mật khẩu xác nhận chưa khớp.';
       return;
     }
-    message.style.color = 'var(--color-success)';
-    message.textContent = 'Thông tin hợp lệ. Tạo tài khoản thật cần backend xác thực.';
+    if (!supabaseClient) {
+      message.textContent = 'Chưa cấu hình kết nối Supabase. Hãy thêm URL và publishable key vào common/supabase-config.js.';
+      return;
+    }
+    const submitButton = signupForm.querySelector('[type="submit"]');
+    submitButton.disabled = true;
+    message.textContent = 'Đang tạo tài khoản…';
+    try {
+      const { data: authData, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: { data: {
+          company_name: company,
+          tax_code: tax,
+          full_name: owner
+        }, ...(emailRedirectUrl() ? { emailRedirectTo: emailRedirectUrl() } : {}) }
+      });
+      if (error) throw error;
+      if (authData.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0) {
+        throw new Error('User already registered');
+      }
+      message.style.color = 'var(--color-success)';
+      message.textContent = authData.session
+        ? 'Đăng ký thành công. Tài khoản Quản trị viên và hồ sơ doanh nghiệp đã được lưu; bạn có thể đăng nhập.'
+        : 'Đã tạo tài khoản. Hãy xác nhận email theo liên kết Supabase gửi tới, sau đó đăng nhập.';
+      signupForm.reset();
+      if (authData.session) window.setTimeout(() => { window.location.href = 'index.html'; }, 1600);
+      else submitButton.disabled = false;
+    } catch (error) {
+      message.textContent = friendlyAuthError(error);
+      submitButton.disabled = false;
+    }
   });
 
 })();
