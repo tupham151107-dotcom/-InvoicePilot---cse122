@@ -187,6 +187,7 @@ IPCommon.requireRole(state.role === 'admin' ? 'admin' : 'manager').then(profile 
   state.role = profile.role;
   state.currentUser = profile.full_name || state.currentUser;
   state.company = { ...state.company, name: profile.company_name || '', tax: profile.tax_code || '', email: profile.email || '' };
+  state.settings = { ...state.settings, accountName: profile.company_name || '' };
   persist();
   render();
 });
