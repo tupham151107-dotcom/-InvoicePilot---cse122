@@ -92,11 +92,20 @@
       if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
       const { data, error } = await supabaseClient
         .from('profiles')
-        .select('id, email, full_name, role, created_at')
+        .select('id, email, full_name, role, invite_status, created_at')
         .eq('company_admin_id', window.IP_AUTH_PROFILE.id)
         .order('created_at', { ascending: true });
       if (error) throw error;
       return data || [];
+    },
+    async deleteCompanyMember(memberId) {
+      if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
+      const { data, error } = await supabaseClient.functions.invoke('delete-member', {
+        body: { member_id: memberId }
+      });
+      if (error) throw new Error(error.message || 'Không xóa được tài khoản thành viên.');
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     async requireRole(role) {
       const loginUrl = '../common/index.html';
