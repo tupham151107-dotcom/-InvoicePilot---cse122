@@ -79,10 +79,10 @@
       const state = readDemoState();
       saveDemoState({ notificationsRead: { ...(state.notificationsRead || {}), [role]: true } });
     },
-    async inviteMember({ email, fullName, role }) {
+    async inviteMember({ email, fullName, temporaryPassword, role }) {
       if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
       const { data, error } = await supabaseClient.functions.invoke('invite-member', {
-        body: { email, full_name: fullName, role }
+        body: { email, full_name: fullName, temporary_password: temporaryPassword, role }
       });
       if (error) throw new Error(error.message || 'Không gửi được lời mời.');
       if (data?.error) throw new Error(data.error);
@@ -225,8 +225,15 @@
       const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password });
       if (authError) throw authError;
       const { data: profile, error: profileError } = await supabaseClient
-        .from('profiles').select('role, full_name, company_name').eq('id', authData.user.id).single();
+        .from('profiles').select('role, full_name, company_name, invite_status').eq('id', authData.user.id).single();
       if (profileError) throw profileError;
+      if (profile.invite_status === 'invited') {
+        loginForm.hidden = true;
+        invitePasswordForm.hidden = false;
+        document.getElementById('invite-password')?.focus();
+        document.getElementById('invite-password-message').textContent = 'Đây là lần đăng nhập đầu tiên. Hãy tạo mật khẩu riêng để tiếp tục.';
+        return;
+      }
       window.IPCommon.goToRole(profile.role, authData.user.email);
     } catch (error) {
       await supabaseClient.auth.signOut().catch(() => {});
@@ -297,11 +304,15 @@
       try {
         const { error } = await supabaseClient.auth.updateUser({ password });
         if (error) throw error;
-        await supabaseClient.auth.signOut();
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const { data: profile, error: profileError } = await supabaseClient
+          .from('profiles').select('role').eq('id', sessionData.session.user.id).single();
+        if (profileError) throw profileError;
         history.replaceState(null, '', window.location.pathname);
         invitePasswordForm.hidden = true;
         loginForm.hidden = false;
-        loginMessage.textContent = 'Đã tạo mật khẩu. Đăng nhập bằng email được mời và mật khẩu mới.';
+        invitePasswordForm.reset();
+        window.IPCommon.goToRole(profile.role, sessionData.session.user.email);
       } catch (error) {
         message.textContent = friendlyAuthError(error);
         button.disabled = false;

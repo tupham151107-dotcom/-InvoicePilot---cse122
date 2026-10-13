@@ -46,8 +46,10 @@ Deno.serve(async (request) => {
     const body = await request.json();
     const email = String(body.email || '').trim().toLowerCase();
     const fullName = String(body.full_name || '').trim();
+    const temporaryPassword = String(body.temporary_password || '');
     const role = String(body.role || '');
     if (!/^\S+@\S+\.\S+$/.test(email) || !fullName) return json({ error: 'Vui lòng nhập họ tên và email hợp lệ.' }, 400);
+    if (temporaryPassword.length < 8) return json({ error: 'Mật khẩu ban đầu cần có ít nhất 8 ký tự.' }, 400);
     if (!['manager', 'accountant', 'sales'].includes(role)) return json({ error: 'Vai trò thành viên không hợp lệ.' }, 400);
     if (!inviter.company_name || !inviter.tax_code) return json({ error: 'Hãy hoàn tất thông tin doanh nghiệp trước khi mời thành viên.' }, 400);
 
@@ -69,12 +71,29 @@ Deno.serve(async (request) => {
         company_name: inviter.company_name,
         tax_code: inviter.tax_code,
         role,
+        initial_password: temporaryPassword,
       },
       redirectTo,
     });
     if (inviteError) {
       await adminClient.from('member_invites').delete().eq('email', email);
       return json({ error: inviteError.message }, 400);
+    }
+
+    const { error: passwordError } = await adminClient.auth.admin.updateUserById(inviteData.user.id, {
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+        company_name: inviter.company_name,
+        tax_code: inviter.tax_code,
+        role,
+        initial_password: null,
+      },
+    });
+    if (passwordError) {
+      await adminClient.from('member_invites').delete().eq('email', email);
+      return json({ error: 'Đã gửi email mời nhưng không thiết lập được mật khẩu ban đầu. Hãy thu hồi lời mời rồi thử lại.' }, 500);
     }
 
     const { error: profileError } = await adminClient.from('profiles').upsert({
