@@ -1,29 +1,16 @@
-(() => {
-  const defaultCustomers = [
-    { name: 'Công ty Minh Phát', contact: 'Nguyễn Minh Anh', email: 'minhanh@example.vn', debt: 141100000, due: '12/10/2026', status: 'Đang theo dõi' },
-    { name: 'Công ty An Tâm', contact: 'Trần Hoài Nam', email: 'nam@example.vn', debt: 36500000, due: '15/10/2026', status: 'Đang hoạt động' },
-    { name: 'Nội thất Mộc Nhiên', contact: 'Lê Thanh Hà', email: 'ha@example.vn', debt: 48200000, due: '06/10/2026', status: 'Cần liên hệ' },
-    { name: 'Công nghệ Sao Mai', contact: 'Phạm Quốc Bảo', email: 'bao@example.vn', debt: 0, due: '—', status: 'Đang hoạt động' }
-  ];
-  const defaultOpportunities = [
-    { id: 'CH-2026-010', customer: 'Công ty Minh Phát', name: 'Mở rộng gói quản lý hóa đơn', value: 85000000, stage: 'Đề xuất', close: '25/10/2026' },
-    { id: 'CH-2026-009', customer: 'Nội thất Mộc Nhiên', name: 'Hợp đồng cửa hàng mới', value: 42000000, stage: 'Đang trao đổi', close: '30/10/2026' },
-    { id: 'CH-2026-008', customer: 'Công ty An Tâm', name: 'Gia hạn dịch vụ', value: 36500000, stage: 'Đủ điều kiện', close: '05/11/2026' }
-  ];
-  const defaultReminders = [
-    { customer: 'Nội thất Mộc Nhiên', invoice: 'IP-2026-008', due: '06/10/2026', amount: 48200000, status: 'Quá hạn', reminded: false },
-    { customer: 'Công ty Minh Phát', invoice: 'IP-2026-009', due: '12/10/2026', amount: 48000000, status: 'Sắp đến hạn', reminded: false },
-    { customer: 'Công ty An Tâm', invoice: 'IP-2026-007', due: '15/10/2026', amount: 36500000, status: 'Sắp đến hạn', reminded: true }
-  ];
-  let customers = defaultCustomers;
-  let opportunities = defaultOpportunities;
-  let reminders = defaultReminders;
+IPCommon.requireRole('sales').then(profile => {
+  if (!profile) return;
+  const salesStorageKey = IPCommon.accountStorageKey('invoicepilot-sales');
+  const salesSettingsStorageKey = IPCommon.accountStorageKey('invoicepilot-sales-settings');
+  let customers = [];
+  let opportunities = [];
+  let reminders = [];
   try {
-    const saved = JSON.parse(localStorage.getItem('invoicepilot-sales') || '{}');
+    const saved = JSON.parse(localStorage.getItem(salesStorageKey) || '{}');
     if (Array.isArray(saved.customers)) customers = saved.customers;
     if (Array.isArray(saved.opportunities)) opportunities = saved.opportunities;
     if (Array.isArray(saved.reminders)) reminders = saved.reminders;
-  } catch { /* file:// privacy settings may disable storage */ }
+  } catch { /* Start with an empty account workspace if storage is unavailable. */ }
   const nav = [
     { id: 'overview', label: 'Tổng quan', href: '#overview', icon: '▦' },
     { id: 'customers', label: 'Khách hàng', href: '#customers', icon: '♙' },
@@ -39,15 +26,6 @@
   const workspace = document.getElementById('workspace');
   const content = document.getElementById('role-content');
   const safe = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-  try {
-    const seedKey = 'invoicepilot-sales-notification-sample-v1';
-    if (!localStorage.getItem(seedKey)) {
-      const saved = JSON.parse(localStorage.getItem('invoicepilot-demo') || '{}');
-      IPCommon.saveDemoState({ notificationsRead: { ...(saved.notificationsRead || {}), sales: false } });
-      localStorage.setItem(seedKey, 'created');
-    }
-  } catch { /* file:// privacy settings may disable storage */ }
-
   function customersTable(items) {
     return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Khách hàng</th><th>Người liên hệ</th><th>Công nợ</th><th>Hạn gần nhất</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(item => `<tr><td><strong>${safe(item.name)}</strong></td><td>${safe(item.contact)}<br><small>${safe(item.email)}</small></td><td><strong>${money(item.debt)}</strong></td><td>${safe(item.due)}</td><td><span class="role-badge ${item.status === 'Cần liên hệ' || item.status === 'Đang theo dõi' ? 'pending' : ''}">${safe(item.status)}</span></td><td><button type="button" data-customer="${safe(item.name)}">Chi tiết</button></td></tr>`).join('')}</tbody></table></div>`;
   }
@@ -88,7 +66,7 @@
   }
 
   function saveSalesData() {
-    try { localStorage.setItem('invoicepilot-sales', JSON.stringify({ customers, opportunities, reminders })); } catch { /* Keep edits for this visit if browser storage is unavailable. */ }
+    try { localStorage.setItem(salesStorageKey, JSON.stringify({ customers, opportunities, reminders })); } catch { /* Keep edits for this visit if browser storage is unavailable. */ }
   }
 
   const salesModals = window.InvoicePilotSalesModals.create({
@@ -98,11 +76,11 @@
   });
 
   function pageMarkup(section) {
-    if (section === 'settings') return `<section class="role-heading"><div><span class="eyebrow">TÙY CHỈNH</span><h1>Cài đặt</h1><p>Hồ sơ và tùy chọn riêng cho tài khoản Kinh doanh.</p></div></section><section class="accountant-settings-profile"><div class="accountant-settings-profile-heading"><div><h2>Hồ sơ</h2><p>Thông tin tài khoản đang đăng nhập.</p></div><span class="accountant-settings-avatar">NA</span></div><div class="accountant-settings-profile-grid"><div><small>Họ và tên</small><strong>Nguyễn Minh Anh</strong></div><div><small>Email</small><strong>demo@invoicepilot.vn</strong></div><div><small>Vai trò</small><strong>Kinh doanh</strong></div><div><small>Không gian làm việc</small><strong>Công ty Minh Phát</strong></div></div></section><section class="accountant-settings-list"><article class="accountant-settings-card"><div><h2>Thông báo</h2><p>Nhận thông báo về khách hàng và cơ hội cần theo dõi.</p></div><label class="accountant-toggle"><input type="checkbox" checked data-sales-setting="notifications"><span></span><b>Bật thông báo</b></label></article><article class="accountant-settings-card"><div><h2>Nhắc thanh toán</h2><p>Hiển thị nhắc nhở hóa đơn sắp đến hạn và quá hạn.</p></div><label class="accountant-toggle"><input type="checkbox" checked data-sales-setting="payment-reminders"><span></span><b>Bật nhắc hạn</b></label></article></section><button class="button button-primary accountant-settings-save" type="button" data-save-sales-settings>Lưu cài đặt</button><div class="role-message" data-sales-message role="status" aria-live="polite"></div>`;
-    if (section === 'customers') return `<section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Khách hàng của tôi</h1><p>Thông tin liên hệ, công nợ và tình trạng chăm sóc.</p></div><button class="button button-primary sales-action" data-sales-action="add-customer">+ Thêm khách hàng</button></section><section class="role-stats"><article class="role-card"><small>Khách hàng phụ trách</small><strong>12</strong><span>3 khách hàng mới tháng này</span></article><article class="role-card"><small>Đang có công nợ</small><strong>5</strong><span>71.500.000 ₫ cần theo dõi</span></article><article class="role-card"><small>Đã thu tháng này</small><strong>27.500.000 ₫</strong><span class="positive">3 khoản đã xác nhận</span></article></section><section class="role-panel"><div class="role-panel-heading"><div><h2>Danh sách khách hàng</h2><p>Tra cứu thông tin và trạng thái theo dõi.</p></div><input class="role-search" type="search" placeholder="Tìm tên, email hoặc người liên hệ" data-sales-search="customers" /></div><div data-sales-list="customers">${customersTable(customers)}</div></section><div class="role-message" data-sales-message role="status"></div>`;
-    if (section === 'opportunities') return `<section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Cơ hội kinh doanh</h1><p>Quản lý cơ hội bán hàng và dự kiến chốt hợp đồng.</p></div><button class="button button-primary" data-sales-action="add-opportunity">+ Thêm cơ hội</button></section><section class="role-stats"><article class="role-card"><small>Cơ hội đang mở</small><strong>${opportunities.length}</strong><span>Trong pipeline hiện tại</span></article><article class="role-card"><small>Tổng giá trị dự kiến</small><strong>${money(opportunities.reduce((sum, item) => sum + item.value, 0))}</strong><span>Giá trị các cơ hội đang mở</span></article><article class="role-card"><small>Dự kiến chốt tháng này</small><strong>2</strong><span>1 cơ hội ở giai đoạn đề xuất</span></article></section><section class="role-panel"><div class="role-panel-heading"><div><h2>Pipeline cơ hội</h2><p>Theo dõi giai đoạn và ngày dự kiến chốt.</p></div><input class="role-search" type="search" placeholder="Tìm cơ hội hoặc khách hàng" data-sales-search="opportunities" /></div><div data-sales-list="opportunities">${opportunityTable(opportunities)}</div></section><div class="role-message" data-sales-message role="status"></div>`;
-    if (section === 'reminders') return `<section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Nhắc thanh toán</h1><p>Phối hợp theo sát hóa đơn sắp đến hạn và quá hạn.</p></div></section><section class="role-stats"><article class="role-card"><small>Khoản cần nhắc</small><strong>${reminders.filter(item => !item.reminded).length}</strong><span>Chưa ghi nhận đã liên hệ</span></article><article class="role-card"><small>Công nợ cần theo dõi</small><strong>${money(reminders.reduce((sum, item) => sum + item.amount, 0))}</strong><span>3 hóa đơn trong danh sách mẫu</span></article><article class="role-card"><small>Đã nhắc khách</small><strong>${reminders.filter(item => item.reminded).length}</strong><span>Trong dữ liệu mẫu</span></article></section><section class="role-panel"><div class="role-panel-heading"><div><h2>Lịch nhắc thanh toán</h2><p>Ghi nhận trạng thái liên hệ khách hàng.</p></div><input class="role-search" type="search" placeholder="Tìm hóa đơn hoặc khách hàng" data-sales-search="reminders" /></div><div data-sales-list="reminders">${reminderTable(reminders)}</div></section><div class="role-message" data-sales-message role="status"></div>`;
-    return `<section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Tổng quan kinh doanh</h1><p>Khách hàng, cơ hội bán hàng và khoản thu cần phối hợp theo dõi.</p></div><button class="button button-primary" data-section="opportunities">Xem cơ hội →</button></section><section class="role-stats"><article class="role-card"><small>Khách hàng phụ trách</small><strong>12</strong><span>3 khách hàng mới tháng này</span></article><article class="role-card"><small>Cơ hội đang mở</small><strong>${opportunities.length}</strong><span>${money(opportunities.reduce((sum, item) => sum + item.value, 0))} giá trị dự kiến</span></article><article class="role-card"><small>Khoản thu cần theo dõi</small><strong>${reminders.filter(item => !item.reminded).length}</strong><span>1 hóa đơn quá hạn</span></article></section><section class="role-panel"><div class="role-panel-heading"><div><h2>Cơ hội gần đây</h2><p>Các cơ hội đang được phụ trách.</p></div><a class="role-inline-link" href="#opportunities" data-section="opportunities">Tất cả cơ hội →</a></div>${opportunityTable(opportunities.slice(0, 2))}</section><section class="role-panel sales-overview-customers"><div class="role-panel-heading"><div><h2>Khách hàng cần theo dõi</h2><p>Khách hàng có khoản thu hoặc tương tác cần chú ý.</p></div><a class="role-inline-link" href="#customers" data-section="customers">Tất cả khách hàng →</a></div>${customersTable(customers.filter(item => item.status !== 'Đang hoạt động'))}</section><div class="role-message" data-sales-message role="status"></div>`;
+    if (section === 'settings') return `<section class="role-heading"><div><span class="eyebrow">TÙY CHỈNH</span><h1>Cài đặt</h1><p>Hồ sơ và tùy chọn riêng cho tài khoản Kinh doanh.</p></div></section><section class="accountant-settings-profile"><div class="accountant-settings-profile-heading"><div><h2>Hồ sơ</h2><p>Thông tin tài khoản đang đăng nhập.</p></div><span class="accountant-settings-avatar">${safe(profile.full_name || 'KD').slice(0, 2).toLocaleUpperCase('vi')}</span></div><div class="accountant-settings-profile-grid"><div><small>Họ và tên</small><strong>${safe(profile.full_name || '')}</strong></div><div><small>Email</small><strong>${safe(profile.email || '')}</strong></div><div><small>Vai trò</small><strong>Kinh doanh</strong></div><div><small>Không gian làm việc</small><strong>${safe(profile.company_name || '')}</strong></div></div></section><section class="accountant-settings-list"><article class="accountant-settings-card"><div><h2>Thông báo</h2><p>Nhận thông báo về khách hàng và cơ hội cần theo dõi.</p></div><label class="accountant-toggle"><input type="checkbox" checked data-sales-setting="notifications"><span></span><b>Bật thông báo</b></label></article><article class="accountant-settings-card"><div><h2>Nhắc thanh toán</h2><p>Hiển thị nhắc nhở hóa đơn sắp đến hạn và quá hạn.</p></div><label class="accountant-toggle"><input type="checkbox" checked data-sales-setting="payment-reminders"><span></span><b>Bật nhắc hạn</b></label></article></section><button class="button button-primary accountant-settings-save" type="button" data-save-sales-settings>Lưu cài đặt</button><div class="role-message" data-sales-message role="status" aria-live="polite"></div>`;
+    if (section === 'customers') return `<section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Khách hàng của tôi</h1><p>Thông tin liên hệ, công nợ và tình trạng chăm sóc.</p></div><button class="button button-primary sales-action" data-sales-action="add-customer">+ Thêm khách hàng</button></section><section class="role-stats"><article class="role-card"><small>Khách hàng phụ trách</small><strong>${customers.length}</strong><span>Khách hàng trong danh sách</span></article><article class="role-card"><small>Đang có công nợ</small><strong>${customers.filter(item => item.debt > 0).length}</strong><span>${money(customers.reduce((sum, item) => sum + item.debt, 0))} cần theo dõi</span></article><article class="role-card"><small>Đã thu tháng này</small><strong>${money(0)}</strong><span class="positive">Chưa có khoản thu</span></article></section><section class="role-panel"><div class="role-panel-heading"><div><h2>Danh sách khách hàng</h2><p>Tra cứu thông tin và trạng thái theo dõi.</p></div><input class="role-search" type="search" placeholder="Tìm tên, email hoặc người liên hệ" data-sales-search="customers" /></div><div data-sales-list="customers">${customersTable(customers)}</div></section><div class="role-message" data-sales-message role="status"></div>`;
+    if (section === 'opportunities') return `<section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Cơ hội kinh doanh</h1><p>Quản lý cơ hội bán hàng và dự kiến chốt hợp đồng.</p></div><button class="button button-primary" data-sales-action="add-opportunity">+ Thêm cơ hội</button></section><section class="role-stats"><article class="role-card"><small>Cơ hội đang mở</small><strong>${opportunities.length}</strong><span>Trong pipeline hiện tại</span></article><article class="role-card"><small>Tổng giá trị dự kiến</small><strong>${money(opportunities.reduce((sum, item) => sum + item.value, 0))}</strong><span>Giá trị các cơ hội đang mở</span></article><article class="role-card"><small>Dự kiến chốt tháng này</small><strong>${opportunities.filter(item => item.stage === 'Đề xuất').length}</strong><span>Cơ hội ở giai đoạn đề xuất</span></article></section><section class="role-panel"><div class="role-panel-heading"><div><h2>Pipeline cơ hội</h2><p>Theo dõi giai đoạn và ngày dự kiến chốt.</p></div><input class="role-search" type="search" placeholder="Tìm cơ hội hoặc khách hàng" data-sales-search="opportunities" /></div><div data-sales-list="opportunities">${opportunityTable(opportunities)}</div></section><div class="role-message" data-sales-message role="status"></div>`;
+    if (section === 'reminders') return `<section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Nhắc thanh toán</h1><p>Phối hợp theo sát hóa đơn sắp đến hạn và quá hạn.</p></div></section><section class="role-stats"><article class="role-card"><small>Khoản cần nhắc</small><strong>${reminders.filter(item => !item.reminded).length}</strong><span>Chưa ghi nhận đã liên hệ</span></article><article class="role-card"><small>Công nợ cần theo dõi</small><strong>${money(reminders.reduce((sum, item) => sum + item.amount, 0))}</strong><span>${reminders.length} hóa đơn trong danh sách</span></article><article class="role-card"><small>Đã nhắc khách</small><strong>${reminders.filter(item => item.reminded).length}</strong><span>Trong dữ liệu tài khoản</span></article></section><section class="role-panel"><div class="role-panel-heading"><div><h2>Lịch nhắc thanh toán</h2><p>Ghi nhận trạng thái liên hệ khách hàng.</p></div><input class="role-search" type="search" placeholder="Tìm hóa đơn hoặc khách hàng" data-sales-search="reminders" /></div><div data-sales-list="reminders">${reminderTable(reminders)}</div></section><div class="role-message" data-sales-message role="status"></div>`;
+    return `<section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Tổng quan kinh doanh</h1><p>Khách hàng, cơ hội bán hàng và khoản thu cần phối hợp theo dõi.</p></div><button class="button button-primary" data-section="opportunities">Xem cơ hội →</button></section><section class="role-stats"><article class="role-card"><small>Khách hàng phụ trách</small><strong>${customers.length}</strong><span>Khách hàng trong danh sách</span></article><article class="role-card"><small>Cơ hội đang mở</small><strong>${opportunities.length}</strong><span>${money(opportunities.reduce((sum, item) => sum + item.value, 0))} giá trị dự kiến</span></article><article class="role-card"><small>Khoản thu cần theo dõi</small><strong>${reminders.filter(item => !item.reminded).length}</strong><span>${reminders.filter(item => item.status === 'Quá hạn').length} hóa đơn quá hạn</span></article></section><section class="role-panel"><div class="role-panel-heading"><div><h2>Cơ hội gần đây</h2><p>Các cơ hội đang được phụ trách.</p></div><a class="role-inline-link" href="#opportunities" data-section="opportunities">Tất cả cơ hội →</a></div>${opportunityTable(opportunities.slice(0, 2))}</section><section class="role-panel sales-overview-customers"><div class="role-panel-heading"><div><h2>Khách hàng cần theo dõi</h2><p>Khách hàng có khoản thu hoặc tương tác cần chú ý.</p></div><a class="role-inline-link" href="#customers" data-section="customers">Tất cả khách hàng →</a></div>${customersTable(customers.filter(item => item.status !== 'Đang hoạt động'))}</section><div class="role-message" data-sales-message role="status"></div>`;
   }
 
   function render(section = location.hash.slice(1)) {
@@ -111,7 +89,7 @@
     IPCommon.mountShell({ role: 'sales', active: nav.find(item => item.id === section).label, nav, searchItems: getGlobalSearchItems() });
     if (section === 'settings') {
       try {
-        const settings = JSON.parse(localStorage.getItem('invoicepilot-sales-settings') || '{}');
+        const settings = JSON.parse(localStorage.getItem(salesSettingsStorageKey) || '{}');
         workspace.querySelectorAll('[data-sales-setting]').forEach(input => {
           if (typeof settings[input.dataset.salesSetting] === 'boolean') input.checked = settings[input.dataset.salesSetting];
         });
@@ -150,7 +128,7 @@
     }
     if (event.target.closest('[data-save-sales-settings]')) {
       const settings = Object.fromEntries([...workspace.querySelectorAll('[data-sales-setting]')].map(input => [input.dataset.salesSetting, input.checked]));
-      try { localStorage.setItem('invoicepilot-sales-settings', JSON.stringify(settings)); } catch { /* Keep current choices visible for this visit. */ }
+      try { localStorage.setItem(salesSettingsStorageKey, JSON.stringify(settings)); } catch { /* Keep current choices visible for this visit. */ }
       const message = workspace.querySelector('[data-sales-message]');
       if (message) message.textContent = 'Đã lưu cài đặt Kinh doanh.';
       return;
@@ -219,4 +197,5 @@
     if (event.key === 'Escape') document.querySelector('[data-reminder-modal]')?.remove();
   });
   render();
-})();
+});
+
