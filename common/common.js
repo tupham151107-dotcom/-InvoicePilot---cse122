@@ -75,6 +75,25 @@
       const state = readDemoState();
       saveDemoState({ notificationsRead: { ...(state.notificationsRead || {}), [role]: true } });
     },
+    async inviteMember({ email, fullName, role }) {
+      if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
+      const { data, error } = await supabaseClient.functions.invoke('invite-member', {
+        body: { email, full_name: fullName, role }
+      });
+      if (error) throw new Error(error.message || 'Không gửi được lời mời.');
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    async listCompanyMembers() {
+      if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id, email, full_name, role, created_at')
+        .eq('company_admin_id', window.IP_AUTH_PROFILE.id)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
     async requireRole(role) {
       const loginUrl = '../common/index.html';
       if (!supabaseClient) {
@@ -178,6 +197,7 @@
   };
 
   const loginForm = document.getElementById('login-form');
+  const invitePasswordForm = document.getElementById('invite-password-form');
   const loginMessage = document.getElementById('login-message');
   if (loginMessage) loginMessage.textContent = takeLoginNotice();
   if (loginForm) loginForm.addEventListener('submit', async event => {
@@ -210,6 +230,45 @@
       button.disabled = false;
     }
   });
+
+  if (supabaseClient && loginForm && invitePasswordForm) {
+    supabaseClient.auth.getSession().then(({ data, error }) => {
+      if (error) throw error;
+      if (!data.session) return null;
+      return supabaseClient.from('profiles').select('invite_status').eq('id', data.session.user.id).single();
+    }).then(result => {
+      if (result?.data?.invite_status === 'invited') {
+        loginForm.hidden = true;
+        invitePasswordForm.hidden = false;
+      }
+    }).catch(error => {
+      const message = document.getElementById('invite-password-message');
+      if (message) message.textContent = friendlyAuthError(error);
+    });
+    invitePasswordForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const message = document.getElementById('invite-password-message');
+      const password = document.getElementById('invite-password').value;
+      const confirm = document.getElementById('invite-password-confirm').value;
+      if (password.length < 8) { message.textContent = 'Mật khẩu cần có ít nhất 8 ký tự.'; return; }
+      if (password !== confirm) { message.textContent = 'Mật khẩu xác nhận chưa khớp.'; return; }
+      const button = invitePasswordForm.querySelector('[type="submit"]');
+      button.disabled = true;
+      message.textContent = 'Đang lưu mật khẩu…';
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password });
+        if (error) throw error;
+        await supabaseClient.auth.signOut();
+        history.replaceState(null, '', window.location.pathname);
+        invitePasswordForm.hidden = true;
+        loginForm.hidden = false;
+        loginMessage.textContent = 'Đã tạo mật khẩu. Đăng nhập bằng email được mời và mật khẩu mới.';
+      } catch (error) {
+        message.textContent = friendlyAuthError(error);
+        button.disabled = false;
+      }
+    });
+  }
 
   const forgotLink = document.getElementById('forgot-link');
   if (forgotLink) forgotLink.addEventListener('click', event => {
