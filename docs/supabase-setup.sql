@@ -30,11 +30,7 @@ begin
     coalesce(new.raw_user_meta_data ->> 'company_name', 'Chưa cập nhật'),
     coalesce(new.raw_user_meta_data ->> 'tax_code', ''),
     coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1)),
-    case
-      when new.raw_user_meta_data ->> 'role' in ('admin', 'manager', 'accountant', 'sales')
-        then new.raw_user_meta_data ->> 'role'
-      else 'admin'
-    end
+    'admin'
   );
   return new;
 end;
