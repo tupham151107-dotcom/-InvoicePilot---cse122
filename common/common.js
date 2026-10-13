@@ -29,6 +29,10 @@
     return window.supabase.createClient(config.url, config.publishableKey);
   })();
 
+  const authCallbackParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const authCallbackQuery = new URLSearchParams(window.location.search);
+  const isInviteCallback = authCallbackParams.get('type') === 'invite' || authCallbackQuery.get('type') === 'invite';
+
   function friendlyAuthError(error) {
     const text = String(error?.message || '');
     if (/invalid login credentials/i.test(text)) return 'Email hoặc mật khẩu chưa chính xác.';
@@ -232,18 +236,53 @@
   });
 
   if (supabaseClient && loginForm && invitePasswordForm) {
+    const callbackError = authCallbackParams.get('error_description') || authCallbackQuery.get('error_description');
+    if (callbackError && loginMessage) loginMessage.textContent = callbackError;
+
+    let inviteCheckRunning = false;
+    const showInvitePasswordForm = async session => {
+      if (!session?.user || inviteCheckRunning || !invitePasswordForm.hidden) return;
+      inviteCheckRunning = true;
+      try {
+        let profile;
+        for (let attempt = 0; attempt < 6; attempt++) {
+          const { data, error } = await supabaseClient.from('profiles')
+            .select('invite_status, role').eq('id', session.user.id).maybeSingle();
+          if (error) throw error;
+          profile = data;
+          if (profile || attempt === 5) break;
+          await new Promise(resolve => window.setTimeout(resolve, 250));
+        }
+
+        const invitedRole = ['manager', 'accountant', 'sales'].includes(profile?.role);
+        if (profile?.invite_status === 'invited' || (isInviteCallback && invitedRole)) {
+          loginForm.hidden = true;
+          invitePasswordForm.hidden = false;
+          document.getElementById('invite-password')?.focus();
+          return;
+        }
+        if (isInviteCallback && loginMessage) {
+          loginMessage.textContent = 'Không tìm thấy hồ sơ lời mời đang chờ. Hãy nhờ quản trị viên gửi lại lời mời mới.';
+        }
+      } catch (error) {
+        if (loginMessage) loginMessage.textContent = `Không xác minh được lời mời: ${friendlyAuthError(error)}`;
+      } finally {
+        inviteCheckRunning = false;
+      }
+    };
+
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      if (session) window.setTimeout(() => { void showInvitePasswordForm(session); }, 0);
+    });
     supabaseClient.auth.getSession().then(({ data, error }) => {
       if (error) throw error;
-      if (!data.session) return null;
-      return supabaseClient.from('profiles').select('invite_status').eq('id', data.session.user.id).single();
-    }).then(result => {
-      if (result?.data?.invite_status === 'invited') {
-        loginForm.hidden = true;
-        invitePasswordForm.hidden = false;
+      if (!data.session && isInviteCallback && loginMessage) {
+        loginMessage.textContent = 'Liên kết lời mời chưa xác thực được. Hãy mở lại email mời hoặc nhờ quản trị viên gửi lời mời mới.';
+        return;
       }
+      return showInvitePasswordForm(data.session);
     }).catch(error => {
-      const message = document.getElementById('invite-password-message');
-      if (message) message.textContent = friendlyAuthError(error);
+      if (loginMessage) loginMessage.textContent = `Không xác minh được lời mời: ${friendlyAuthError(error)}`;
     });
     invitePasswordForm.addEventListener('submit', async event => {
       event.preventDefault();
