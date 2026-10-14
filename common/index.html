@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#102d52" />
   <title>Đăng nhập · 19 InvoicePilot</title>
-  <link rel="stylesheet" href="common.css?v=password-recovery-1" />
+  <link rel="stylesheet" href="common.css?v=password-recovery-otp-1" />
 </head>
 <body class="auth-page">
   <main class="auth-layout">
@@ -33,27 +33,36 @@
         <div class="form-footer">Chưa có tài khoản? <a href="signup.html">Đăng ký doanh nghiệp</a></div>
         <div class="form-message" id="login-message" role="status" aria-live="polite"></div>
       </form>
-      <form class="login-card" id="forgot-password-form" hidden>
-        <span class="eyebrow">KHÔI PHỤC TÀI KHOẢN</span>
-        <h2>Quên mật khẩu?</h2>
-        <p class="muted">Nhập email tài khoản. Chúng tôi sẽ gửi liên kết để bạn tạo mật khẩu mới.</p>
-        <label for="reset-email">Email</label>
-        <input id="reset-email" name="email" type="email" autocomplete="email" placeholder="ten@congty.vn" required />
-        <button class="button button-primary" type="submit">Gửi liên kết đặt lại mật khẩu</button>
-        <div class="form-message" id="reset-request-message" role="status" aria-live="polite"></div>
-        <div class="form-footer"><a href="#login" data-show-login>Quay lại đăng nhập</a></div>
-      </form>
-      <form class="login-card" id="reset-password-form" hidden>
-        <span class="eyebrow">BẢO MẬT TÀI KHOẢN</span>
-        <h2>Tạo mật khẩu mới</h2>
-        <p class="muted">Chọn mật khẩu mới cho tài khoản của bạn.</p>
-        <label for="reset-new-password">Mật khẩu mới</label>
-        <input id="reset-new-password" type="password" autocomplete="new-password" minlength="8" required />
-        <label for="reset-confirm-password">Nhập lại mật khẩu</label>
-        <input id="reset-confirm-password" type="password" autocomplete="new-password" minlength="8" required />
-        <button class="button button-primary" type="submit">Lưu mật khẩu mới</button>
-        <div class="form-message" id="reset-password-message" role="status" aria-live="polite"></div>
-      </form>
+      <section class="recovery-overlay" id="password-recovery-modal" role="dialog" aria-modal="true" aria-labelledby="recovery-title" hidden>
+        <div class="recovery-dialog">
+          <header class="recovery-header"><div><span class="eyebrow">KHÔI PHỤC TÀI KHOẢN</span><h2 id="recovery-title">Quên mật khẩu?</h2></div><button class="recovery-close" type="button" aria-label="Đóng" data-close-recovery>×</button></header>
+          <form class="recovery-step" data-recovery-step="email">
+            <p class="muted">Nhập email tài khoản. Mã xác minh sẽ được gửi về hộp thư của bạn.</p>
+            <label for="reset-email">Email</label>
+            <input id="reset-email" name="email" type="email" autocomplete="email" placeholder="ten@congty.vn" required />
+            <button class="button button-primary" type="submit">Gửi mã xác minh</button>
+            <div class="form-message" id="reset-request-message" role="status" aria-live="polite"></div>
+            <div class="form-footer"><a href="#login" data-close-recovery>Quay lại đăng nhập</a></div>
+          </form>
+          <form class="recovery-step" data-recovery-step="code" hidden>
+            <p class="muted">Nhập mã trong email gửi tới <strong id="recovery-email-label"></strong>.</p>
+            <label for="reset-code">Mã xác minh</label>
+            <input id="reset-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{6,8}" placeholder="Nhập mã trong email" required />
+            <button class="button button-primary" type="submit">Xác minh mã</button>
+            <div class="form-message" id="reset-code-message" role="status" aria-live="polite"></div>
+            <div class="form-footer"><button class="recovery-text-button" type="button" data-recovery-back="email">Quay lại</button></div>
+          </form>
+          <form class="recovery-step" data-recovery-step="password" hidden>
+            <p class="muted">Tạo mật khẩu mới có ít nhất 8 ký tự.</p>
+            <label for="reset-new-password">Mật khẩu mới</label>
+            <input id="reset-new-password" type="password" autocomplete="new-password" minlength="8" required />
+            <label for="reset-confirm-password">Nhập lại mật khẩu</label>
+            <input id="reset-confirm-password" type="password" autocomplete="new-password" minlength="8" required />
+            <button class="button button-primary" type="submit">Lưu mật khẩu mới</button>
+            <div class="form-message" id="reset-password-message" role="status" aria-live="polite"></div>
+          </form>
+        </div>
+      </section>
       <form class="login-card" id="invite-password-form" hidden>
         <span class="eyebrow">HOÀN TẤT LỜI MỜI</span>
         <h2>Tạo mật khẩu</h2>
@@ -69,6 +78,6 @@
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="common.js?v=password-recovery-1"></script>
+  <script src="common.js?v=password-recovery-otp-1"></script>
 </body>
 </html>

@@ -287,7 +287,8 @@
 
   const loginForm = document.getElementById('login-form');
   const invitePasswordForm = document.getElementById('invite-password-form');
-  const resetPasswordForm = document.getElementById('reset-password-form');
+  const recoveryModal = document.getElementById('password-recovery-modal');
+  const resetPasswordForm = document.querySelector('[data-recovery-step="password"]');
   const loginMessage = document.getElementById('login-message');
   if (loginMessage) loginMessage.textContent = takeLoginNotice();
   if (loginForm) loginForm.addEventListener('submit', async event => {
@@ -337,8 +338,12 @@
       if (!isRecoveryCallback || !session?.user || !resetPasswordForm) return false;
       loginForm.hidden = true;
       invitePasswordForm.hidden = true;
-      document.getElementById('forgot-password-form').hidden = true;
-      resetPasswordForm.hidden = false;
+      recoveryModal.hidden = false;
+      document.body.classList.add('recovery-open');
+      document.getElementById('reset-email').value = session.user.email || '';
+      document.getElementById('recovery-email-label').textContent = session.user.email || '';
+      recoveryModal.querySelectorAll('[data-recovery-step]').forEach(step => { step.hidden = step.dataset.recoveryStep !== 'password'; });
+      document.getElementById('recovery-title').textContent = 'Tạo mật khẩu mới';
       document.getElementById('reset-new-password')?.focus();
       return true;
     };
@@ -421,48 +426,90 @@
   }
 
   const forgotLink = document.getElementById('forgot-link');
-  const forgotPasswordForm = document.getElementById('forgot-password-form');
-  if (forgotLink && forgotPasswordForm && loginForm) forgotLink.addEventListener('click', event => {
+  const emailStepForm = recoveryModal?.querySelector('[data-recovery-step="email"]');
+  const codeStepForm = recoveryModal?.querySelector('[data-recovery-step="code"]');
+  const changePasswordForm = recoveryModal?.querySelector('[data-recovery-step="password"]');
+  const showRecoveryStep = stepName => {
+    recoveryModal.querySelectorAll('[data-recovery-step]').forEach(step => { step.hidden = step.dataset.recoveryStep !== stepName; });
+    const titles = { email: 'Quên mật khẩu?', code: 'Nhập mã xác minh', password: 'Tạo mật khẩu mới' };
+    document.getElementById('recovery-title').textContent = titles[stepName];
+  };
+  const closeRecoveryModal = () => {
+    recoveryModal.hidden = true;
+    document.body.classList.remove('recovery-open');
+  };
+  if (forgotLink && recoveryModal && loginForm) forgotLink.addEventListener('click', event => {
     event.preventDefault();
     document.getElementById('reset-email').value = document.getElementById('login-email')?.value.trim() || '';
-    document.getElementById('reset-request-message').textContent = supabaseClient ? '' : 'Chưa kết nối được Supabase. Hãy thử lại sau.';
-    forgotPasswordForm.hidden = false;
+    document.getElementById('reset-request-message').textContent = '';
+    document.getElementById('reset-request-message').classList.remove('is-success');
+    recoveryModal.hidden = false;
     loginForm.hidden = true;
+    document.body.classList.add('recovery-open');
+    showRecoveryStep('email');
+    if (!supabaseClient) document.getElementById('reset-request-message').textContent = 'Chưa kết nối được Supabase. Hãy thử lại sau.';
     document.getElementById('reset-email').focus();
   });
-  document.querySelectorAll('[data-show-login]').forEach(link => link.addEventListener('click', event => {
+  recoveryModal?.querySelectorAll('[data-close-recovery]').forEach(button => button.addEventListener('click', event => {
     event.preventDefault();
-    forgotPasswordForm.hidden = true;
+    closeRecoveryModal();
     loginForm.hidden = false;
     document.getElementById('login-email')?.focus();
   }));
-  if (forgotPasswordForm) forgotPasswordForm.addEventListener('submit', async event => {
+  recoveryModal?.querySelectorAll('[data-recovery-back]').forEach(button => button.addEventListener('click', () => showRecoveryStep(button.dataset.recoveryBack)));
+  recoveryModal?.addEventListener('click', event => { if (event.target === recoveryModal) { closeRecoveryModal(); loginForm.hidden = false; } });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && recoveryModal && !recoveryModal.hidden) { closeRecoveryModal(); loginForm.hidden = false; } });
+  if (emailStepForm) emailStepForm.addEventListener('submit', async event => {
     event.preventDefault();
     const message = document.getElementById('reset-request-message');
     const email = document.getElementById('reset-email').value.trim();
     if (!supabaseClient) { message.textContent = 'Chưa kết nối được Supabase. Hãy thử lại sau.'; return; }
-    const button = forgotPasswordForm.querySelector('[type="submit"]');
+    const button = emailStepForm.querySelector('[type="submit"]');
     button.disabled = true;
     message.classList.remove('is-success');
     message.textContent = 'Đang gửi liên kết…';
     try {
       const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: emailRedirectUrl() });
       if (error) throw error;
+      button.disabled = false;
+      document.getElementById('recovery-email-label').textContent = email;
+      document.getElementById('reset-code-message').textContent = '';
+      showRecoveryStep('code');
+      document.getElementById('reset-code').focus();
       message.classList.add('is-success');
-      message.textContent = 'Nếu email này đã đăng ký, hướng dẫn đặt lại mật khẩu sẽ được gửi tới hộp thư. Kiểm tra cả mục thư rác.';
+      message.textContent = 'Đã yêu cầu gửi mã. Kiểm tra hộp thư và mục thư rác.';
     } catch (error) {
       message.textContent = friendlyAuthError(error);
       button.disabled = false;
     }
   });
-  if (resetPasswordForm) resetPasswordForm.addEventListener('submit', async event => {
+  if (codeStepForm) codeStepForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const message = document.getElementById('reset-code-message');
+    const email = document.getElementById('reset-email').value.trim();
+    const token = document.getElementById('reset-code').value.trim();
+    const button = codeStepForm.querySelector('[type="submit"]');
+    button.disabled = true;
+    message.textContent = 'Đang xác minh mã…';
+    try {
+      const { error } = await supabaseClient.auth.verifyOtp({ email, token, type: 'recovery' });
+      if (error) throw error;
+      message.textContent = '';
+      showRecoveryStep('password');
+      document.getElementById('reset-new-password').focus();
+    } catch (error) {
+      message.textContent = friendlyAuthError(error);
+      button.disabled = false;
+    }
+  });
+  if (changePasswordForm) changePasswordForm.addEventListener('submit', async event => {
     event.preventDefault();
     const message = document.getElementById('reset-password-message');
     const password = document.getElementById('reset-new-password').value;
     const confirmation = document.getElementById('reset-confirm-password').value;
     if (password.length < 8) { message.textContent = 'Mật khẩu cần có ít nhất 8 ký tự.'; return; }
     if (password !== confirmation) { message.textContent = 'Mật khẩu xác nhận chưa khớp.'; return; }
-    const button = resetPasswordForm.querySelector('[type="submit"]');
+    const button = changePasswordForm.querySelector('[type="submit"]');
     button.disabled = true;
     message.textContent = 'Đang lưu mật khẩu mới…';
     try {
@@ -470,7 +517,10 @@
       if (error) throw error;
       await supabaseClient.auth.signOut();
       history.replaceState(null, '', window.location.pathname);
-      resetPasswordForm.hidden = true;
+      closeRecoveryModal();
+      changePasswordForm.reset();
+      document.getElementById('reset-request-message').textContent = '';
+      document.getElementById('reset-code').value = '';
       loginForm.hidden = false;
       document.getElementById('login-message').classList.add('is-success');
       document.getElementById('login-message').textContent = 'Đã đổi mật khẩu. Đăng nhập bằng mật khẩu mới của bạn.';
