@@ -131,6 +131,13 @@
         const status = paid >= Number(row.amount) ? 'Đã thanh toán' : new Date(`${row.due_date}T00:00:00`) < today ? 'Quá hạn' : 'Chưa thanh toán';
         return { dbId: row.id, id: row.invoice_no, customerId: row.customer_id, customer: customer?.name || 'Khách hàng đã lưu trữ', issued: formatDate(row.issue_date), due: formatDate(row.due_date), issueDate: row.issue_date, dueDate: row.due_date, amount: Number(row.amount) || 0, amountPaid: paid, balance: Math.max(0, (Number(row.amount) || 0) - paid), description: row.description || '', status };
       });
+      if (invoices.some(invoice => invoice.status === 'Đã thanh toán')) {
+        document.querySelectorAll('.notification-bell').forEach(bell => {
+          if (!bell.querySelector('.notification-dot-indicator')) {
+            const dot = document.createElement('i'); dot.className = 'dot notification-dot-indicator'; bell.append(dot);
+          }
+        });
+      }
       const customers = (customersResult.data || []).map(row => {
         const customerInvoices = invoices.filter(invoice => invoice.customerId === row.id);
         const invoiceDebt = customerInvoices.reduce((sum, invoice) => sum + invoice.balance, 0);
@@ -172,6 +179,16 @@
         issue_date: invoice.issueDate, due_date: invoice.dueDate, amount: Number(invoice.amount) || 0,
         description: String(invoice.description || '').trim()
       }).select('*').single();
+      if (error) throw error;
+      return data;
+    },
+    async markCompanyInvoicePaid(invoiceId) {
+      if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
+      if (!['admin', 'accountant'].includes(window.IP_AUTH_PROFILE?.role)) throw new Error('Chỉ Kế toán hoặc Quản trị viên mới có thể ghi nhận thanh toán.');
+      const { data: invoice, error: readError } = await supabaseClient.from('ip_invoices').select('amount, amount_paid').eq('id', invoiceId).single();
+      if (readError) throw readError;
+      if (Number(invoice.amount_paid) >= Number(invoice.amount)) return invoice;
+      const { data, error } = await supabaseClient.from('ip_invoices').update({ amount_paid: Number(invoice.amount), updated_at: new Date().toISOString() }).eq('id', invoiceId).select('*').single();
       if (error) throw error;
       return data;
     },
@@ -284,6 +301,33 @@
       window.location.href = `${destinations[role] || destinations.manager}?${query}`;
     }
   };
+
+  document.addEventListener('click', async event => {
+    const bell = event.target.closest('.notification-bell');
+    if (!bell || !window.IP_AUTH_PROFILE?.id) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    document.querySelector('.ip-paid-notifications')?.remove();
+    const panel = document.createElement('section');
+    panel.className = 'ip-paid-notifications';
+    panel.setAttribute('role', 'status');
+    panel.innerHTML = '<strong>Thông báo hóa đơn</strong><p>Đang tải…</p>';
+    bell.insertAdjacentElement('afterend', panel);
+    try {
+      const { invoices } = await window.IPCommon.getCompanyBusinessData();
+      const paid = invoices.filter(invoice => invoice.status === 'Đã thanh toán').slice(0, 8);
+      panel.innerHTML = `<strong>Thông báo hóa đơn</strong>${paid.length ? paid.map(invoice => `<article><b>${escapeHTML(invoice.id)} đã thanh toán</b><small>${escapeHTML(invoice.customer)} · ${window.IPCommon.money(invoice.amount)} · ${escapeHTML(invoice.issued)}</small></article>`).join('') : '<p>Chưa có hóa đơn nào được ghi nhận đã thanh toán.</p>'}`;
+    } catch (error) {
+      panel.innerHTML = `<strong>Thông báo hóa đơn</strong><p>${escapeHTML(error.message || 'Không tải được thông báo.')}</p>`;
+    }
+  }, true);
+  document.addEventListener('click', event => {
+    if (!event.target.closest('.ip-paid-notifications') && !event.target.closest('.notification-bell')) document.querySelector('.ip-paid-notifications')?.remove();
+  });
+
+  function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  }
 
   const loginForm = document.getElementById('login-form');
   const invitePasswordForm = document.getElementById('invite-password-form');

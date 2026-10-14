@@ -21,7 +21,7 @@ IPCommon.requireRole('accountant').then(async profile => {
   const workspace = document.getElementById('workspace');
 
   function invoiceTable(items) {
-    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${row.id}</strong></td><td>${row.customer}</td><td>${row.due}</td><td><strong>${format(row.amount)}</strong></td><td><span class="role-badge ${row.status === 'Quá hạn' ? 'pending' : ''}">${row.status}</span></td><td><button type="button" data-invoice-id="${row.id}">Chi tiết</button></td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.id)}</strong></td><td>${safe(row.customer)}</td><td>${row.due}</td><td><strong>${format(row.amount)}</strong></td><td><span class="role-badge ${row.status === 'Quá hạn' ? 'pending' : ''}">${row.status}</span></td><td><button type="button" data-invoice-id="${safe(row.id)}">Chi tiết</button>${row.status !== 'Đã thanh toán' ? ` <button type="button" data-mark-invoice-paid="${safe(row.dbId)}" data-invoice-number="${safe(row.id)}">Ghi nhận đã thanh toán</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function paymentTable(items) {
@@ -136,16 +136,6 @@ IPCommon.requireRole('accountant').then(async profile => {
         if (settings.language) workspace.querySelector('.accountant-language').value = settings.language;
       } catch { /* Settings remain usable when browser storage is unavailable. */ }
     }
-    const bell = workspace.querySelector('[data-shared-notification-bell="accountant"]');
-    bell?.addEventListener('click', () => {
-      const oldPanel = workspace.querySelector('.accountant-notification-menu');
-      if (oldPanel) { oldPanel.remove(); return; }
-      const unread = IPCommon.hasUnreadNotifications('accountant');
-      const panel = document.createElement('section');
-      panel.className = 'accountant-notification-menu';
-      panel.innerHTML = `<div class="accountant-notification-heading"><strong>Thông báo Kế toán</strong><span>${unread ? 'Mới' : 'Đã xem'}</span></div><article><b>Có khoản thanh toán chờ đối soát</b><small>3 giao dịch mới cần kiểm tra trong mục Thanh toán.</small><button type="button" class="accountant-notification-link" data-section="payments">Mở thanh toán</button></article><button type="button" class="accountant-notification-mark" data-accountant-mark-read ${unread ? '' : 'disabled'}>Đánh dấu đã đọc</button>`;
-      bell.closest('.shared-header-actions').append(panel);
-    });
   }
 
   window.addEventListener('invoicepilot:global-search-select', event => {
@@ -199,6 +189,25 @@ IPCommon.requireRole('accountant').then(async profile => {
       document.querySelector('[data-accountant-message]').textContent = `Đã đối soát giao dịch ${reconcile.dataset.reconcile}.`;
       return;
     }
+    const markPaid = event.target.closest('[data-mark-invoice-paid]');
+    if (markPaid) {
+      const invoice = invoices.find(item => item.dbId === markPaid.dataset.markInvoicePaid);
+      if (!invoice || !window.confirm(`Ghi nhận hóa đơn ${invoice.id} đã thanh toán đủ ${format(invoice.amount)}? Tất cả vai trò trong doanh nghiệp sẽ thấy cập nhật này.`)) return;
+      markPaid.disabled = true;
+      markPaid.textContent = 'Đang lưu…';
+      try {
+        await IPCommon.markCompanyInvoicePaid(invoice.dbId);
+        await refreshSharedBusinessData();
+        const status = workspace.querySelector('[data-accountant-message]');
+        if (status) status.textContent = `Đã lưu thanh toán hóa đơn ${invoice.id}. Trạng thái và thông báo đã đồng bộ cho toàn doanh nghiệp.`;
+      } catch (error) {
+        markPaid.disabled = false;
+        markPaid.textContent = 'Ghi nhận đã thanh toán';
+        const status = workspace.querySelector('[data-accountant-message]');
+        if (status) status.textContent = error.message || 'Không lưu được trạng thái thanh toán.';
+      }
+      return;
+    }
     const modalInvoice = event.target.closest('[data-modal-invoice]');
     if (modalInvoice) {
       showInvoicePreview(modalInvoice.dataset.modalInvoice);
@@ -227,6 +236,7 @@ IPCommon.requireRole('accountant').then(async profile => {
     const data = await IPCommon.getCompanyBusinessData();
     customers = data.customers;
     invoices = data.invoices;
+    payments.splice(0, payments.length, ...invoices.filter(item => item.amountPaid > 0).map(item => ({ id: `PAY-${item.id}`, invoice: item.id, customer: item.customer, date: item.issued, amount: item.amountPaid, status: item.status === 'Đã thanh toán' ? 'Đã đối soát' : 'Đã ghi nhận' })));
     render(location.hash.slice(1) || 'overview');
   }
 
