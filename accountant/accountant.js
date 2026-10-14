@@ -21,7 +21,7 @@ IPCommon.requireRole('accountant').then(async profile => {
   const workspace = document.getElementById('workspace');
 
   function invoiceTable(items) {
-    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.id)}</strong></td><td>${safe(row.customer)}</td><td>${row.due}</td><td><strong>${format(row.amount)}</strong></td><td><span class="role-badge ${row.status === 'Quá hạn' ? 'pending' : ''}">${row.status}</span></td><td><button type="button" data-invoice-id="${safe(row.id)}">Chi tiết</button>${row.status !== 'Đã thanh toán' ? ` <button type="button" data-mark-invoice-paid="${safe(row.dbId)}" data-invoice-number="${safe(row.id)}">Ghi nhận đã thanh toán</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Đã thu</th><th>Còn lại</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.id)}</strong></td><td>${safe(row.customer)}</td><td>${row.due}</td><td><strong>${format(row.amount)}</strong></td><td>${format(row.amountPaid)}</td><td>${format(row.balance)}</td><td><span class="role-badge ${row.status === 'Quá hạn' ? 'pending' : ''}">${row.status}</span></td><td><button type="button" data-invoice-id="${safe(row.id)}">Chi tiết</button>${row.balance > 0 ? ` <button type="button" data-record-payment="${safe(row.dbId)}">Ghi nhận thanh toán</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function paymentTable(items) {
@@ -58,17 +58,17 @@ IPCommon.requireRole('accountant').then(async profile => {
     const company = customers.find(item => item.name === invoice.customer);
     const subtotal = Math.round(invoice.amount / 1.1);
     const tax = invoice.amount - subtotal;
-    const balance = invoice.status === 'Đã thanh toán' ? 0 : invoice.amount;
+    const balance = invoice.balance;
     const modal = document.createElement('div');
     modal.className = 'accountant-modal-backdrop invoice-preview-backdrop';
     modal.dataset.companyProfileModal = '';
     modal.innerHTML = `<section class="accountant-modal invoice-preview-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-preview-title">
-      <header class="accountant-modal-header invoice-modal-toolbar"><div><span class="eyebrow">CHI TIẾT HÓA ĐƠN</span><h2 id="invoice-preview-title">${invoice.id}</h2></div><div class="invoice-toolbar-actions"><button class="button" type="button" data-print-invoice>In / lưu PDF</button><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></div></header>
+      <header class="accountant-modal-header invoice-modal-toolbar"><div><span class="eyebrow">CHI TIẾT HÓA ĐƠN</span><h2 id="invoice-preview-title">${invoice.id}</h2></div><div class="invoice-toolbar-actions"><button class="button" type="button" data-invoice-history="${safe(invoice.dbId)}">Lịch sử</button><button class="button" type="button" data-print-invoice>In / lưu PDF</button><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></div></header>
       <article class="invoice-paper">
         <div class="invoice-paper-top"><div><span class="invoice-brand-mark">IP</span><h3>CÔNG TY TNHH ÁNH DƯƠNG</h3><p>Mã số thuế: 0312456789<br />Email: ketoan@anhduong.example.vn</p></div><div class="invoice-title-block"><h1>HÓA ĐƠN</h1><span class="role-badge ${invoice.status === 'Quá hạn' ? 'pending' : ''}">${invoice.status}</span></div></div>
         <div class="invoice-meta-grid"><div><small>KHÁCH HÀNG</small><strong>${safe(invoice.customer)}</strong><span>${safe(company?.contact || '')}</span><span>${safe(company?.email || '')}</span><span>MST: ${company?.tax || '—'}</span></div><div><small>THÔNG TIN HÓA ĐƠN</small><strong>${invoice.id}</strong><span>Ngày phát hành: ${invoice.issued}</span><span>Hạn thanh toán: ${invoice.due}</span><span>Loại tiền: VND</span></div></div>
         <div class="invoice-items-wrap"><table class="invoice-items"><thead><tr><th>#</th><th>Hạng mục / mô tả</th><th>SL</th><th>Đơn giá</th><th>Thuế</th><th>Thành tiền</th></tr></thead><tbody><tr><td>1</td><td><strong>Dịch vụ theo hợp đồng</strong><small>Dịch vụ cung cấp trong kỳ tháng 09/2026</small></td><td>1</td><td>${format(subtotal)}</td><td>10%</td><td><strong>${format(invoice.amount)}</strong></td></tr></tbody></table></div>
-        <div class="invoice-summary"><div class="invoice-note"><strong>Ghi chú thanh toán</strong><p>Vui lòng ghi mã hóa đơn ${invoice.id} trong nội dung chuyển khoản.</p><p>${safe(profile.company_name || 'Doanh nghiệp của bạn')}</p></div><div class="invoice-totals"><div><span>Tạm tính</span><strong>${format(subtotal)}</strong></div><div><span>Thuế GTGT (10%)</span><strong>${format(tax)}</strong></div><div class="invoice-grand-total"><span>Tổng cộng</span><strong>${format(invoice.amount)}</strong></div><div><span>Đã thanh toán</span><strong>${format(invoice.amount - balance)}</strong></div><div class="invoice-balance"><span>Còn phải thu</span><strong>${format(balance)}</strong></div></div></div>
+        <div class="invoice-summary"><div class="invoice-note"><strong>Ghi chú thanh toán</strong><p>Vui lòng ghi mã hóa đơn ${invoice.id} trong nội dung chuyển khoản.</p><p>${safe(profile.company_name || 'Doanh nghiệp của bạn')}</p></div><div class="invoice-totals"><div><span>Tạm tính</span><strong>${format(subtotal)}</strong></div><div><span>Thuế GTGT (10%)</span><strong>${format(tax)}</strong></div><div class="invoice-grand-total"><span>Tổng cộng</span><strong>${format(invoice.amount)}</strong></div><div><span>Đã thanh toán</span><strong>${format(invoice.amountPaid)}</strong></div><div class="invoice-balance"><span>Còn phải thu</span><strong>${format(balance)}</strong></div></div></div>
         <footer class="invoice-paper-footer">InvoicePilot · Cảm ơn Quý khách đã sử dụng dịch vụ.</footer>
       </article>
       <footer class="accountant-modal-footer invoice-modal-toolbar"><button class="button" type="button" data-close-accountant-modal>Đóng</button><button class="button button-primary" type="button" data-print-invoice>In / lưu PDF</button></footer>
@@ -155,7 +155,7 @@ IPCommon.requireRole('accountant').then(async profile => {
     if (type === 'customer') document.querySelector('[data-customer-list]').innerHTML = customerTable(customers.filter(row => `${row.name} ${row.contact} ${row.email}`.toLocaleLowerCase('vi').includes(query)));
   }
 
-  workspace.addEventListener('click', event => {
+  workspace.addEventListener('click', async event => {
     const bell = event.target.closest('[data-shared-notification-bell="accountant"]');
     if (bell) return;
     const markRead = event.target.closest('[data-accountant-mark-read]');
@@ -189,23 +189,38 @@ IPCommon.requireRole('accountant').then(async profile => {
       document.querySelector('[data-accountant-message]').textContent = `Đã đối soát giao dịch ${reconcile.dataset.reconcile}.`;
       return;
     }
-    const markPaid = event.target.closest('[data-mark-invoice-paid]');
-    if (markPaid) {
-      const invoice = invoices.find(item => item.dbId === markPaid.dataset.markInvoicePaid);
-      if (!invoice || !window.confirm(`Ghi nhận hóa đơn ${invoice.id} đã thanh toán đủ ${format(invoice.amount)}? Tất cả vai trò trong doanh nghiệp sẽ thấy cập nhật này.`)) return;
-      markPaid.disabled = true;
-      markPaid.textContent = 'Đang lưu…';
+    const addPayment = event.target.closest('[data-record-payment]');
+    if (addPayment) {
+      const invoice = invoices.find(item => item.dbId === addPayment.dataset.recordPayment);
+      if (!invoice) return;
+      const entered = window.prompt(`Nhập số tiền nhận cho ${invoice.id}. Còn phải thu: ${format(invoice.balance)}`, String(invoice.balance));
+      if (entered === null) return;
+      const amount = Number(String(entered).replace(/[^\d]/g, ''));
+      if (!amount || amount > invoice.balance) { window.alert(`Nhập số tiền lớn hơn 0 và không vượt quá ${format(invoice.balance)}.`); return; }
+      addPayment.disabled = true;
+      addPayment.textContent = 'Đang lưu…';
       try {
-        await IPCommon.markCompanyInvoicePaid(invoice.dbId);
+        await IPCommon.recordCompanyInvoicePayment(invoice.dbId, amount, 'bank');
         await refreshSharedBusinessData();
         const status = workspace.querySelector('[data-accountant-message]');
-        if (status) status.textContent = `Đã lưu thanh toán hóa đơn ${invoice.id}. Trạng thái và thông báo đã đồng bộ cho toàn doanh nghiệp.`;
+        if (status) status.textContent = `Đã lưu khoản thu ${format(amount)} cho ${invoice.id}. Số dư còn ${format(Math.max(0, invoice.balance - amount))}; lịch sử được lưu trong Supabase.`;
       } catch (error) {
-        markPaid.disabled = false;
-        markPaid.textContent = 'Ghi nhận đã thanh toán';
+        addPayment.disabled = false;
+        addPayment.textContent = 'Ghi nhận thanh toán';
         const status = workspace.querySelector('[data-accountant-message]');
-        if (status) status.textContent = error.message || 'Không lưu được trạng thái thanh toán.';
+        if (status) status.textContent = error.message || 'Không lưu được khoản thanh toán.';
       }
+      return;
+    }
+    const historyButton = event.target.closest('[data-invoice-history]');
+    if (historyButton) {
+      const host = workspace.querySelector('.invoice-paper');
+      let historyBox = host.querySelector('.invoice-history');
+      if (!historyBox) { historyBox = document.createElement('section'); historyBox.className = 'invoice-history'; historyBox.textContent = 'Đang tải lịch sử…'; host.append(historyBox); }
+      try {
+        const history = await IPCommon.getCompanyInvoiceHistory(historyButton.dataset.invoiceHistory);
+        historyBox.innerHTML = `<h3>Lịch sử hóa đơn</h3>${history.length ? history.map(item => `<p><strong>${safe(({ invoice_created: 'Tạo hóa đơn', amount_paid: 'Ghi nhận thanh toán', invoice_updated: 'Cập nhật hóa đơn' })[item.event_type] || item.event_type)}</strong><small>${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.changed_at))} · ${safe(String(item.changed_by || '').slice(0, 8))}</small></p>`).join('') : '<p>Chưa có lịch sử thay đổi.</p>'}`;
+      } catch (error) { historyBox.textContent = error.message || 'Không tải được lịch sử hóa đơn.'; }
       return;
     }
     const modalInvoice = event.target.closest('[data-modal-invoice]');
@@ -236,7 +251,7 @@ IPCommon.requireRole('accountant').then(async profile => {
     const data = await IPCommon.getCompanyBusinessData();
     customers = data.customers;
     invoices = data.invoices;
-    payments.splice(0, payments.length, ...invoices.filter(item => item.amountPaid > 0).map(item => ({ id: `PAY-${item.id}`, invoice: item.id, customer: item.customer, date: item.issued, amount: item.amountPaid, status: item.status === 'Đã thanh toán' ? 'Đã đối soát' : 'Đã ghi nhận' })));
+    payments.splice(0, payments.length, ...(data.payments || []).map(item => ({ id: `PAY-${item.id.slice(0, 8)}`, invoice: item.invoice, customer: item.customer, date: new Intl.DateTimeFormat('vi-VN').format(new Date(item.paidAt)), amount: item.amount, status: 'Đã ghi nhận' })));
     render(location.hash.slice(1) || 'overview');
   }
 

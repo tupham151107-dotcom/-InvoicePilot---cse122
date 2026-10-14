@@ -63,6 +63,14 @@ Mỗi phân hệ có HTML, CSS và JavaScript riêng; các trang vai trò sử d
 2. Dùng Live Server mở `index.html`.
 3. Từ trang đăng nhập, chọn vai trò để vào giao diện tương ứng.
 
+## Hóa đơn, thanh toán và lịch sử
+
+- Kế toán có thể ghi nhận thanh toán toàn phần hoặc từng phần; khoản thu và số dư còn lại được đồng bộ giữa các vai trò.
+- Chuông thông báo hiển thị khoản thanh toán gần đây và hóa đơn đến hạn trong 7 ngày hoặc đã quá hạn.
+- Lịch sử hóa đơn ghi lại lúc tạo, thay đổi thông tin và ghi nhận tiền thanh toán.
+- Để bật các chức năng này trên Supabase, chạy `supabase/migrations/202610140001_invoice_payments_and_history.sql` trong SQL Editor sau migration `docs/supabase-shared-business-data.sql`.
+- Nhắc hạn hiện hiển thị trong ứng dụng. Gửi email nhắc tự động chưa được cấu hình.
+
 ## Quy tắc tích hợp
 
 1. Đặt tên class theo BEM, ví dụ `.invoice-table`, `.invoice-table__row`, `.invoice-table__row--overdue`; dùng prefix theo phân hệ khi cần.

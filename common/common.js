@@ -28,6 +28,7 @@
     if (!config?.url || !config?.publishableKey || !window.supabase?.createClient) return null;
     return window.supabase.createClient(config.url, config.publishableKey);
   })();
+  let invoicePaymentsTableReady = false;
 
   const authCallbackParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const authCallbackQuery = new URLSearchParams(window.location.search);
@@ -116,22 +117,31 @@
     async getCompanyBusinessData() {
       if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
       const companyAdminId = window.IP_AUTH_PROFILE.company_admin_id || window.IP_AUTH_PROFILE.id;
-      const [customersResult, invoicesResult] = await Promise.all([
+      const [customersResult, invoicesResult, paymentsResult] = await Promise.all([
         supabaseClient.from('ip_customers').select('*').eq('company_admin_id', companyAdminId).order('created_at', { ascending: false }),
-        supabaseClient.from('ip_invoices').select('*').eq('company_admin_id', companyAdminId).order('issue_date', { ascending: false })
+        supabaseClient.from('ip_invoices').select('*').eq('company_admin_id', companyAdminId).order('issue_date', { ascending: false }),
+        supabaseClient.from('ip_payments').select('*').eq('company_admin_id', companyAdminId).order('paid_at', { ascending: false }).limit(100)
       ]);
       if (customersResult.error) throw customersResult.error;
       if (invoicesResult.error) throw invoicesResult.error;
+      const paymentsUnavailable = paymentsResult.error?.code === '42P01' || paymentsResult.error?.code === 'PGRST205';
+      if (paymentsResult.error && !paymentsUnavailable) throw paymentsResult.error;
+      invoicePaymentsTableReady = !paymentsUnavailable;
       const invoiceRows = invoicesResult.data || [];
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const formatDate = value => value ? new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`)) : '—';
       const invoices = invoiceRows.map(row => {
         const customer = (customersResult.data || []).find(item => item.id === row.customer_id);
         const paid = Number(row.amount_paid) || 0;
-        const status = paid >= Number(row.amount) ? 'Đã thanh toán' : new Date(`${row.due_date}T00:00:00`) < today ? 'Quá hạn' : 'Chưa thanh toán';
+        const status = paid >= Number(row.amount) ? 'Đã thanh toán' : new Date(`${row.due_date}T00:00:00`) < today ? 'Quá hạn' : paid > 0 ? 'Đã thanh toán một phần' : 'Chưa thanh toán';
         return { dbId: row.id, id: row.invoice_no, customerId: row.customer_id, customer: customer?.name || 'Khách hàng đã lưu trữ', issued: formatDate(row.issue_date), due: formatDate(row.due_date), issueDate: row.issue_date, dueDate: row.due_date, amount: Number(row.amount) || 0, amountPaid: paid, balance: Math.max(0, (Number(row.amount) || 0) - paid), description: row.description || '', status };
       });
-      if (invoices.some(invoice => invoice.status === 'Đã thanh toán')) {
+      const payments = paymentsUnavailable ? [] : (paymentsResult.data || []).map(row => {
+        const invoice = invoices.find(item => item.dbId === row.invoice_id);
+        return { id: row.id, invoiceId: row.invoice_id, invoice: invoice?.id || '', customer: invoice?.customer || 'Khách hàng', amount: Number(row.amount) || 0, method: row.payment_method || '', reference: row.reference || '', paidAt: row.paid_at, createdAt: row.created_at };
+      });
+      const needsReminder = invoices.some(invoice => invoice.balance > 0 && invoice.dueDate && (new Date(`${invoice.dueDate}T00:00:00`) - today) / 86400000 <= 7);
+      if (invoices.some(invoice => invoice.status === 'Đã thanh toán') || payments.length || needsReminder) {
         document.querySelectorAll('.notification-bell').forEach(bell => {
           if (!bell.querySelector('.notification-dot-indicator')) {
             const dot = document.createElement('i'); dot.className = 'dot notification-dot-indicator'; bell.append(dot);
@@ -143,7 +153,10 @@
         const invoiceDebt = customerInvoices.reduce((sum, invoice) => sum + invoice.balance, 0);
         return { id: row.id, name: row.name, tax: row.tax_code || '', contact: row.contact_name || '', email: row.contact_email || '', phone: row.phone || '', status: row.status || 'Đang hoạt động', openingBalance: Number(row.opening_balance) || 0, debt: invoiceDebt + (Number(row.opening_balance) || 0), invoices: customerInvoices.length, due: customerInvoices.find(invoice => invoice.balance > 0)?.due || '—' };
       });
-      return { customers, invoices };
+      const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
+      const reminders = invoices.filter(invoice => invoice.balance > 0 && invoice.dueDate && Math.ceil((new Date(`${invoice.dueDate}T00:00:00`) - todayDate) / 86400000) <= 7)
+        .map(invoice => ({ ...invoice, daysUntilDue: Math.ceil((new Date(`${invoice.dueDate}T00:00:00`) - todayDate) / 86400000) }));
+      return { customers, invoices, payments, reminders, paymentLedgerReady: !paymentsUnavailable };
     },
     async createCompanyCustomer(customer) {
       if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
@@ -182,23 +195,35 @@
       if (error) throw error;
       return data;
     },
-    async markCompanyInvoicePaid(invoiceId) {
+    async recordCompanyInvoicePayment(invoiceId, amount, paymentMethod = 'bank', reference = '') {
       if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
       if (!['admin', 'accountant'].includes(window.IP_AUTH_PROFILE?.role)) throw new Error('Chỉ Kế toán hoặc Quản trị viên mới có thể ghi nhận thanh toán.');
-      const { data: invoice, error: readError } = await supabaseClient.from('ip_invoices').select('amount, amount_paid').eq('id', invoiceId).single();
-      if (readError) throw readError;
-      if (Number(invoice.amount_paid) >= Number(invoice.amount)) return invoice;
-      const { data, error } = await supabaseClient.from('ip_invoices').update({ amount_paid: Number(invoice.amount), updated_at: new Date().toISOString() }).eq('id', invoiceId).select('*').single();
-      if (error) throw error;
+      const { data, error } = await supabaseClient.rpc('record_company_invoice_payment', {
+        p_invoice_id: invoiceId, p_amount: Number(amount), p_payment_method: paymentMethod, p_reference: reference
+      });
+      if (error) {
+        if (error.code === '42883' || /record_company_invoice_payment/i.test(error.message || '')) throw new Error('Chức năng lưu giao dịch chưa được bật. Hãy chạy migration mới trong Supabase trước.');
+        throw error;
+      }
       return data;
+    },
+    async getCompanyInvoiceHistory(invoiceId) {
+      if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
+      const { data, error } = await supabaseClient.from('ip_invoice_history').select('event_type, changed_by, old_values, new_values, changed_at').eq('invoice_id', invoiceId).order('changed_at', { ascending: false }).limit(30);
+      if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205') throw new Error('Lịch sử hóa đơn chưa được bật. Hãy chạy migration mới trong Supabase trước.');
+        throw error;
+      }
+      return data || [];
     },
     subscribeCompanyBusinessData(onChange) {
       if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) return null;
       const companyAdminId = window.IP_AUTH_PROFILE.company_admin_id || window.IP_AUTH_PROFILE.id;
-      return supabaseClient.channel(`business-data:${companyAdminId}`)
+      const channel = supabaseClient.channel(`business-data:${companyAdminId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_customers', filter: `company_admin_id=eq.${companyAdminId}` }, onChange)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_invoices', filter: `company_admin_id=eq.${companyAdminId}` }, onChange)
-        .subscribe();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_invoices', filter: `company_admin_id=eq.${companyAdminId}` }, onChange);
+      if (invoicePaymentsTableReady) channel.on('postgres_changes', { event: '*', schema: 'public', table: 'ip_payments', filter: `company_admin_id=eq.${companyAdminId}` }, onChange);
+      return channel.subscribe();
     },
     async requireRole(role) {
       const loginUrl = '../common/index.html';
@@ -307,16 +332,21 @@
     if (!bell || !window.IP_AUTH_PROFILE?.id) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    document.querySelector('.ip-paid-notifications')?.remove();
+    const existingPanel = document.querySelector('.ip-paid-notifications');
+    if (existingPanel && existingPanel.previousElementSibling === bell) { existingPanel.remove(); return; }
+    existingPanel?.remove();
     const panel = document.createElement('section');
     panel.className = 'ip-paid-notifications';
     panel.setAttribute('role', 'status');
     panel.innerHTML = '<strong>Thông báo hóa đơn</strong><p>Đang tải…</p>';
     bell.insertAdjacentElement('afterend', panel);
     try {
-      const { invoices } = await window.IPCommon.getCompanyBusinessData();
-      const paid = invoices.filter(invoice => invoice.status === 'Đã thanh toán').slice(0, 8);
-      panel.innerHTML = `<strong>Thông báo hóa đơn</strong>${paid.length ? paid.map(invoice => `<article><b>${escapeHTML(invoice.id)} đã thanh toán</b><small>${escapeHTML(invoice.customer)} · ${window.IPCommon.money(invoice.amount)} · ${escapeHTML(invoice.issued)}</small></article>`).join('') : '<p>Chưa có hóa đơn nào được ghi nhận đã thanh toán.</p>'}`;
+      const { invoices, payments = [], reminders = [] } = await window.IPCommon.getCompanyBusinessData();
+      const paymentItems = payments.slice(0, 6).map(payment => `<article><b>${escapeHTML(payment.invoice)} · Đã nhận ${window.IPCommon.money(payment.amount)}</b><small>${escapeHTML(payment.customer)} · ${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(payment.paidAt))}</small></article>`);
+      const reminderItems = reminders.slice(0, 6).map(invoice => `<article><b>${escapeHTML(invoice.id)} · ${invoice.daysUntilDue < 0 ? `Quá hạn ${Math.abs(invoice.daysUntilDue)} ngày` : invoice.daysUntilDue === 0 ? 'Đến hạn hôm nay' : `Còn ${invoice.daysUntilDue} ngày đến hạn`}</b><small>${escapeHTML(invoice.customer)} · Còn phải thu ${window.IPCommon.money(invoice.balance)}</small></article>`);
+      const legacyPaid = payments.length ? [] : invoices.filter(invoice => invoice.status === 'Đã thanh toán').slice(0, 6).map(invoice => `<article><b>${escapeHTML(invoice.id)} đã thanh toán</b><small>${escapeHTML(invoice.customer)} · ${window.IPCommon.money(invoice.amount)}</small></article>`);
+      const items = [...paymentItems, ...reminderItems, ...legacyPaid];
+      panel.innerHTML = `<strong>Thông báo hóa đơn</strong>${items.length ? items.join('') : '<p>Chưa có thanh toán hoặc hóa đơn gần đến hạn.</p>'}`;
     } catch (error) {
       panel.innerHTML = `<strong>Thông báo hóa đơn</strong><p>${escapeHTML(error.message || 'Không tải được thông báo.')}</p>`;
     }
