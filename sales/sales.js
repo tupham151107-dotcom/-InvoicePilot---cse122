@@ -1,4 +1,4 @@
-IPCommon.requireRole('sales').then(profile => {
+IPCommon.requireRole('sales').then(async profile => {
   if (!profile) return;
   const salesStorageKey = IPCommon.accountStorageKey('invoicepilot-sales');
   const salesSettingsStorageKey = IPCommon.accountStorageKey('invoicepilot-sales-settings');
@@ -7,7 +7,6 @@ IPCommon.requireRole('sales').then(profile => {
   let reminders = [];
   try {
     const saved = JSON.parse(localStorage.getItem(salesStorageKey) || '{}');
-    if (Array.isArray(saved.customers)) customers = saved.customers;
     if (Array.isArray(saved.opportunities)) opportunities = saved.opportunities;
     if (Array.isArray(saved.reminders)) reminders = saved.reminders;
   } catch { /* Start with an empty account workspace if storage is unavailable. */ }
@@ -66,12 +65,16 @@ IPCommon.requireRole('sales').then(profile => {
   }
 
   function saveSalesData() {
-    try { localStorage.setItem(salesStorageKey, JSON.stringify({ customers, opportunities, reminders })); } catch { /* Keep edits for this visit if browser storage is unavailable. */ }
+    try { localStorage.setItem(salesStorageKey, JSON.stringify({ opportunities, reminders })); } catch { /* Keep edits for this visit if browser storage is unavailable. */ }
   }
 
   const salesModals = window.InvoicePilotSalesModals.create({
     workspace, customers, opportunities, money,
-    onCustomerAdded: (name, modal) => { saveSalesData(); modal.remove(); render('customers'); workspace.querySelector('[data-sales-message]').textContent = `Đã thêm khách hàng ${name}.`; },
+    onCustomerAdded: async (customer, modal) => {
+      const saved = await IPCommon.createCompanyCustomer(customer);
+      customers.unshift({ ...customer, id: saved.id, tax: saved.tax_code, invoiceCount: 0 });
+      saveSalesData(); modal.remove(); render('customers'); workspace.querySelector('[data-sales-message]').textContent = `Đã thêm khách hàng ${customer.name}. Dữ liệu đã đồng bộ cho doanh nghiệp.`;
+    },
     onOpportunityAdded: (name, modal) => { saveSalesData(); modal.remove(); render('opportunities'); workspace.querySelector('[data-sales-message]').textContent = `Đã thêm cơ hội ${name}.`; }
   });
 
@@ -196,6 +199,25 @@ IPCommon.requireRole('sales').then(profile => {
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') document.querySelector('[data-reminder-modal]')?.remove();
   });
-  render();
+  async function refreshSharedBusinessData() {
+    const shared = await IPCommon.getCompanyBusinessData();
+    customers.splice(0, customers.length, ...shared.customers);
+    const savedReminders = new Map(reminders.map(item => [item.invoice, item]));
+    reminders = shared.invoices.filter(item => item.balance > 0).map(item => {
+      const old = savedReminders.get(item.id);
+      return { invoice: item.id, customer: item.customer, due: item.due, amount: item.balance, status: item.status, reminded: Boolean(old?.reminded), remindedAt: old?.remindedAt || '' };
+    });
+    saveSalesData();
+    render(location.hash.slice(1) || 'overview');
+  }
+
+  try {
+    await refreshSharedBusinessData();
+    IPCommon.subscribeCompanyBusinessData(() => { void refreshSharedBusinessData().catch(error => console.error('Không đồng bộ được dữ liệu doanh nghiệp:', error)); });
+  } catch (error) {
+    console.error('Không tải được dữ liệu dùng chung:', error);
+    content.innerHTML = `<section class="role-panel"><div class="empty-state">Không tải được dữ liệu chung của doanh nghiệp: ${safe(error.message || 'Hãy kiểm tra cấu hình Supabase.')}</div></section>`;
+    IPCommon.mountShell({ role: 'sales', active: 'Khách hàng', nav, searchItems: [] });
+  }
 });
 

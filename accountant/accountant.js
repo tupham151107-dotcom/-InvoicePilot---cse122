@@ -1,14 +1,9 @@
-IPCommon.requireRole('accountant').then(profile => {
+IPCommon.requireRole('accountant').then(async profile => {
   if (!profile) return;
-  const invoiceStorageKey = IPCommon.accountStorageKey('invoicepilot-accountant-invoices');
   const settingsStorageKey = IPCommon.accountStorageKey('invoicepilot-accountant-settings');
   let invoices = [];
-  try {
-    const savedInvoices = JSON.parse(localStorage.getItem(invoiceStorageKey) || 'null');
-    if (Array.isArray(savedInvoices)) invoices = savedInvoices;
-  } catch { /* Start with an empty account workspace if storage is unavailable. */ }
+  let customers = [];
   const payments = [];
-  const customers = [];
   const nav = [
     { id: 'overview', label: 'Tổng quan', href: '#overview', icon: '▦' },
     { id: 'invoices', label: 'Hóa đơn', href: '#invoices', icon: '▤' },
@@ -17,7 +12,7 @@ IPCommon.requireRole('accountant').then(profile => {
     { id: 'settings', label: 'Cài đặt', href: '#settings', icon: '⚙' }
   ];
   const format = amount => IPCommon.money(amount);
-  const globalSearchItems = [
+  const globalSearchItems = () => [
     ...invoices.map(item => ({ title: item.id, kind: 'Hóa đơn', description: `${item.customer} · ${format(item.amount)}`, searchText: `${item.id} ${item.customer} ${item.status}`, section: 'invoices', filter: 'invoice', query: item.id })),
     ...customers.map(item => ({ title: item.name, kind: 'Khách hàng', description: `${item.contact} · ${item.email}`, searchText: `${item.name} ${item.contact} ${item.email} ${item.tax}`, section: 'customers', filter: 'customer', query: item.name }))
   ];
@@ -92,7 +87,7 @@ IPCommon.requireRole('accountant').then(profile => {
     const due = new Date(today);
     due.setDate(due.getDate() + 30);
     const dueISO = new Date(due.getTime() - due.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    modal.innerHTML = `<section class="accountant-modal invoice-create-modal" role="dialog" aria-modal="true" aria-labelledby="create-invoice-title"><header class="accountant-modal-header"><div><span class="eyebrow">KẾ TOÁN</span><h2 id="create-invoice-title">Tạo hóa đơn</h2></div><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></header><form class="invoice-create-form" data-create-invoice-form><label>Khách hàng<select name="customer" required>${customers.map(customer => `<option value="${safe(customer.name)}">${safe(customer.name)}</option>`).join('')}</select></label><div class="invoice-create-fields"><label>Ngày phát hành<input name="issued" type="date" value="${todayISO}" required></label><label>Hạn thanh toán<input name="due" type="date" value="${dueISO}" required></label></div><label>Mô tả hàng hóa / dịch vụ<input name="description" type="text" placeholder="Ví dụ: Dịch vụ theo hợp đồng" required></label><label>Tổng tiền (₫)<input name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 12.000.000" required></label><footer class="accountant-modal-footer"><button class="button" type="button" data-close-accountant-modal>Hủy</button><button class="button button-primary" type="submit">Tạo hóa đơn</button></footer></form></section>`;
+    modal.innerHTML = `<section class="accountant-modal invoice-create-modal" role="dialog" aria-modal="true" aria-labelledby="create-invoice-title"><header class="accountant-modal-header"><div><span class="eyebrow">KẾ TOÁN</span><h2 id="create-invoice-title">Tạo hóa đơn</h2></div><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></header><form class="invoice-create-form" data-create-invoice-form><label>Khách hàng<select name="customer" required>${customers.map(customer => `<option value="${safe(customer.id)}">${safe(customer.name)}</option>`).join('')}</select></label><div class="invoice-create-fields"><label>Ngày phát hành<input name="issued" type="date" value="${todayISO}" required></label><label>Hạn thanh toán<input name="due" type="date" value="${dueISO}" required></label></div><label>Mô tả hàng hóa / dịch vụ<input name="description" type="text" placeholder="Ví dụ: Dịch vụ theo hợp đồng" required></label><label>Tổng tiền (₫)<input name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 12.000.000" required></label><footer class="accountant-modal-footer"><button class="button" type="button" data-close-accountant-modal>Hủy</button><button class="button button-primary" type="submit">Tạo hóa đơn</button></footer></form></section>`;
     workspace.append(modal);
     modal.querySelector('[name="customer"]')?.focus();
   }
@@ -131,7 +126,7 @@ IPCommon.requireRole('accountant').then(profile => {
   function render(section = location.hash.slice(1)) {
     if (!nav.some(item => item.id === section)) section = 'overview';
     content.innerHTML = pageMarkup(section);
-    IPCommon.mountShell({ role: 'accountant', active: nav.find(item => item.id === section).label, nav, searchItems: globalSearchItems });
+    IPCommon.mountShell({ role: 'accountant', active: nav.find(item => item.id === section).label, nav, searchItems: globalSearchItems() });
     if (section === 'settings') {
       try {
         const settings = JSON.parse(localStorage.getItem(settingsStorageKey) || '{}');
@@ -228,7 +223,14 @@ IPCommon.requireRole('accountant').then(profile => {
     } else if (customer) showCompanyProfile(customer.dataset.customer);
     else if (action?.dataset.accountantAction === 'new-invoice') showCreateInvoiceForm();
   });
-  workspace.addEventListener('submit', event => {
+  async function refreshSharedBusinessData() {
+    const data = await IPCommon.getCompanyBusinessData();
+    customers = data.customers;
+    invoices = data.invoices;
+    render(location.hash.slice(1) || 'overview');
+  }
+
+  workspace.addEventListener('submit', async event => {
     const form = event.target.closest('[data-create-invoice-form]');
     if (!form) return;
     event.preventDefault();
@@ -237,20 +239,30 @@ IPCommon.requireRole('accountant').then(profile => {
     const maxNumber = invoices.reduce((max, item) => Math.max(max, Number(item.id.match(/(\d+)$/)?.[1] || 0)), 0);
     const invoice = {
       id: `IP-${new Date().getFullYear()}-${String(maxNumber + 1).padStart(3, '0')}`,
-      customer: String(data.get('customer')),
+      customerId: String(data.get('customer')),
+      customer: customers.find(item => item.id === String(data.get('customer')))?.name || '',
       issued: dateLabel(String(data.get('issued'))),
       due: dateLabel(String(data.get('due'))),
       amount,
       description: String(data.get('description')).trim(),
       status: 'Chưa thanh toán'
     };
-    invoices.unshift(invoice);
-    try { localStorage.setItem(invoiceStorageKey, JSON.stringify(invoices)); } catch { /* Keep the new invoice for this visit. */ }
-    workspace.querySelector('[data-create-invoice-modal]')?.remove();
-    const section = location.hash.slice(1) || 'overview';
-    render(section);
-    const message = workspace.querySelector('[data-accountant-message]');
-    if (message) message.textContent = `Đã tạo hóa đơn ${invoice.id} cho ${invoice.customer}.`;
+    const submit = form.querySelector('[type="submit"]');
+    submit.disabled = true;
+    submit.textContent = 'Đang lưu…';
+    try {
+      await IPCommon.createCompanyInvoice({ ...invoice, issueDate: String(data.get('issued')), dueDate: String(data.get('due')) });
+      await refreshSharedBusinessData();
+      workspace.querySelector('[data-create-invoice-modal]')?.remove();
+      const message = workspace.querySelector('[data-accountant-message]');
+      if (message) message.textContent = `Đã tạo hóa đơn ${invoice.id} cho ${invoice.customer}. Dữ liệu đã đồng bộ cho doanh nghiệp.`;
+    } catch (error) {
+      submit.disabled = false;
+      submit.textContent = 'Tạo hóa đơn';
+      let errorBox = form.querySelector('[data-invoice-error]');
+      if (!errorBox) { errorBox = document.createElement('p'); errorBox.dataset.invoiceError = ''; errorBox.className = 'role-message'; form.append(errorBox); }
+      errorBox.textContent = error.message || 'Không lưu được hóa đơn vào dữ liệu chung.';
+    }
   });
   document.addEventListener('click', event => {
     if (!event.target.closest('.accountant-notification-menu') && !event.target.closest('[data-shared-notification-bell="accountant"]')) workspace.querySelector('.accountant-notification-menu')?.remove();
@@ -267,6 +279,13 @@ IPCommon.requireRole('accountant').then(profile => {
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape') document.querySelector('[data-company-profile-modal]')?.remove();
   });
-  render();
+  try {
+    await refreshSharedBusinessData();
+    IPCommon.subscribeCompanyBusinessData(() => { void refreshSharedBusinessData().catch(error => console.error('Không đồng bộ được dữ liệu doanh nghiệp:', error)); });
+  } catch (error) {
+    console.error('Không tải được dữ liệu dùng chung:', error);
+    content.innerHTML = `<section class="role-panel"><div class="empty-state">Không tải được dữ liệu chung của doanh nghiệp: ${safe(error.message || 'Hãy kiểm tra cấu hình Supabase.')}</div></section>`;
+    IPCommon.mountShell({ role: 'accountant', active: 'Hóa đơn', nav, searchItems: [] });
+  }
 });
 

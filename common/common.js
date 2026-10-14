@@ -112,6 +112,76 @@
       const { error } = await supabaseClient.auth.updateUser({ password });
       if (error) throw error;
     },
+    async getCompanyBusinessData() {
+      if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
+      const companyAdminId = window.IP_AUTH_PROFILE.company_admin_id || window.IP_AUTH_PROFILE.id;
+      const [customersResult, invoicesResult] = await Promise.all([
+        supabaseClient.from('ip_customers').select('*').eq('company_admin_id', companyAdminId).order('created_at', { ascending: false }),
+        supabaseClient.from('ip_invoices').select('*').eq('company_admin_id', companyAdminId).order('issue_date', { ascending: false })
+      ]);
+      if (customersResult.error) throw customersResult.error;
+      if (invoicesResult.error) throw invoicesResult.error;
+      const invoiceRows = invoicesResult.data || [];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const formatDate = value => value ? new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`)) : '—';
+      const invoices = invoiceRows.map(row => {
+        const customer = (customersResult.data || []).find(item => item.id === row.customer_id);
+        const paid = Number(row.amount_paid) || 0;
+        const status = paid >= Number(row.amount) ? 'Đã thanh toán' : new Date(`${row.due_date}T00:00:00`) < today ? 'Quá hạn' : 'Chưa thanh toán';
+        return { dbId: row.id, id: row.invoice_no, customerId: row.customer_id, customer: customer?.name || 'Khách hàng đã lưu trữ', issued: formatDate(row.issue_date), due: formatDate(row.due_date), issueDate: row.issue_date, dueDate: row.due_date, amount: Number(row.amount) || 0, amountPaid: paid, balance: Math.max(0, (Number(row.amount) || 0) - paid), description: row.description || '', status };
+      });
+      const customers = (customersResult.data || []).map(row => {
+        const customerInvoices = invoices.filter(invoice => invoice.customerId === row.id);
+        const invoiceDebt = customerInvoices.reduce((sum, invoice) => sum + invoice.balance, 0);
+        return { id: row.id, name: row.name, tax: row.tax_code || '', contact: row.contact_name || '', email: row.contact_email || '', phone: row.phone || '', status: row.status || 'Đang hoạt động', openingBalance: Number(row.opening_balance) || 0, debt: invoiceDebt + (Number(row.opening_balance) || 0), invoices: customerInvoices.length, due: customerInvoices.find(invoice => invoice.balance > 0)?.due || '—' };
+      });
+      return { customers, invoices };
+    },
+    async createCompanyCustomer(customer) {
+      if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
+      const companyAdminId = window.IP_AUTH_PROFILE.company_admin_id || window.IP_AUTH_PROFILE.id;
+      const { data, error } = await supabaseClient.from('ip_customers').insert({
+        company_admin_id: companyAdminId,
+        name: String(customer.name || '').trim(),
+        tax_code: String(customer.tax || '').trim(),
+        contact_name: String(customer.contact || '').trim(),
+        contact_email: String(customer.email || '').trim(),
+        phone: String(customer.phone || '').trim(),
+        status: String(customer.status || 'Đang hoạt động'),
+        opening_balance: Number(customer.openingBalance) || 0
+      }).select('*').single();
+      if (error) throw error;
+      return data;
+    },
+    async updateCompanyCustomer(customerId, customer) {
+      if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
+      const { data, error } = await supabaseClient.from('ip_customers').update({
+        name: String(customer.name || '').trim(), tax_code: String(customer.tax || '').trim(),
+        contact_name: String(customer.contact || '').trim(), contact_email: String(customer.email || '').trim(),
+        phone: String(customer.phone || '').trim(), status: String(customer.status || 'Đang hoạt động')
+      }).eq('id', customerId).select('*').single();
+      if (error) throw error;
+      return data;
+    },
+    async createCompanyInvoice(invoice) {
+      if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
+      const companyAdminId = window.IP_AUTH_PROFILE.company_admin_id || window.IP_AUTH_PROFILE.id;
+      const { data, error } = await supabaseClient.from('ip_invoices').insert({
+        company_admin_id: companyAdminId, customer_id: invoice.customerId, invoice_no: invoice.id,
+        issue_date: invoice.issueDate, due_date: invoice.dueDate, amount: Number(invoice.amount) || 0,
+        description: String(invoice.description || '').trim()
+      }).select('*').single();
+      if (error) throw error;
+      return data;
+    },
+    subscribeCompanyBusinessData(onChange) {
+      if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) return null;
+      const companyAdminId = window.IP_AUTH_PROFILE.company_admin_id || window.IP_AUTH_PROFILE.id;
+      return supabaseClient.channel(`business-data:${companyAdminId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_customers', filter: `company_admin_id=eq.${companyAdminId}` }, onChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_invoices', filter: `company_admin_id=eq.${companyAdminId}` }, onChange)
+        .subscribe();
+    },
     async requireRole(role) {
       const loginUrl = '../common/index.html';
       if (!supabaseClient) {
@@ -128,7 +198,7 @@
           return null;
         }
         const { data: profile, error: profileError } = await supabaseClient
-          .from('profiles').select('role, full_name, company_name, tax_code').eq('id', session.user.id).single();
+          .from('profiles').select('role, full_name, company_name, tax_code, company_admin_id').eq('id', session.user.id).single();
         if (profileError) throw profileError;
         if (profile.role !== role) {
           await supabaseClient.auth.signOut();

@@ -13,12 +13,22 @@
         if (event.target === backdrop || event.target.closest('[data-close-sales-modal]')) backdrop.remove();
       });
       const form = backdrop.querySelector('[data-sales-modal-form]');
-      form?.addEventListener('submit', event => {
+      form?.addEventListener('submit', async event => {
         event.preventDefault();
         if (!form.reportValidity() || form.dataset.submitting === 'true') return;
         form.dataset.submitting = 'true';
-        onSubmit(new FormData(form), backdrop);
-        if (backdrop.isConnected) delete form.dataset.submitting;
+        const submit = form.querySelector('[type="submit"]');
+        if (submit) submit.disabled = true;
+        try {
+          await onSubmit(new FormData(form), backdrop);
+        } catch (error) {
+          let message = form.querySelector('[data-sales-save-error]');
+          if (!message) { message = document.createElement('p'); message.dataset.salesSaveError = ''; message.className = 'sales-form-error'; form.prepend(message); }
+          message.textContent = error.message || 'Không lưu được vào dữ liệu chung. Hãy thử lại.';
+          if (submit) submit.disabled = false;
+        } finally {
+          if (backdrop.isConnected) delete form.dataset.submitting;
+        }
       });
       backdrop.querySelector('[data-close-sales-modal]')?.focus();
       return backdrop;
@@ -26,7 +36,7 @@
 
     function openCustomerForm() {
       const body = `<form class="sales-data-form" data-sales-modal-form><label>Tên khách hàng<input name="name" required maxlength="100" placeholder="Tên doanh nghiệp"></label><label>Người liên hệ<input name="contact" required maxlength="80" placeholder="Họ tên người liên hệ"></label><label>Email<input name="email" type="email" required maxlength="120" placeholder="email@congty.vn"></label><label>Công nợ hiện tại (₫)<input name="debt" type="number" min="0" step="1" value="0" required></label><label>Hạn thanh toán gần nhất<input name="due" type="date"></label><label>Trạng thái<select name="status"><option>Đang hoạt động</option><option>Đang theo dõi</option><option>Cần liên hệ</option></select></label><footer><button type="button" class="button" data-close-sales-modal>Hủy</button><button class="button button-primary" type="submit">Lưu khách hàng</button></footer></form>`;
-      openModal('Thêm khách hàng', body, (data, modal) => {
+      openModal('Thêm khách hàng', body, async (data, modal) => {
         const name = String(data.get('name') || '').trim();
         if (customers.some(customer => customer.name.toLocaleLowerCase('vi') === name.toLocaleLowerCase('vi'))) {
           modal.querySelector('.sales-form-error')?.remove();
@@ -39,8 +49,8 @@
           return;
         }
         const dueISO = String(data.get('due') || '');
-        customers.unshift({ name, contact: String(data.get('contact') || '').trim(), email: String(data.get('email') || '').trim(), debt: Number(data.get('debt')) || 0, due: dueISO ? new Intl.DateTimeFormat('vi-VN').format(new Date(`${dueISO}T00:00:00`)) : '—', status: String(data.get('status')) });
-        onCustomerAdded(name, modal);
+        const customer = { name, contact: String(data.get('contact') || '').trim(), email: String(data.get('email') || '').trim(), openingBalance: Number(data.get('debt')) || 0, debt: Number(data.get('debt')) || 0, due: dueISO ? new Intl.DateTimeFormat('vi-VN').format(new Date(`${dueISO}T00:00:00`)) : '—', status: String(data.get('status')) };
+        await onCustomerAdded(customer, modal);
       });
     }
 
