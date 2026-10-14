@@ -32,6 +32,7 @@
   const authCallbackParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const authCallbackQuery = new URLSearchParams(window.location.search);
   const isInviteCallback = authCallbackParams.get('type') === 'invite' || authCallbackQuery.get('type') === 'invite';
+  const isRecoveryCallback = authCallbackParams.get('type') === 'recovery' || authCallbackQuery.get('type') === 'recovery';
 
   function friendlyAuthError(error) {
     const text = String(error?.message || '');
@@ -286,6 +287,7 @@
 
   const loginForm = document.getElementById('login-form');
   const invitePasswordForm = document.getElementById('invite-password-form');
+  const resetPasswordForm = document.getElementById('reset-password-form');
   const loginMessage = document.getElementById('login-message');
   if (loginMessage) loginMessage.textContent = takeLoginNotice();
   if (loginForm) loginForm.addEventListener('submit', async event => {
@@ -331,7 +333,17 @@
     if (callbackError && loginMessage) loginMessage.textContent = callbackError;
 
     let inviteCheckRunning = false;
+    const showResetPasswordForm = session => {
+      if (!isRecoveryCallback || !session?.user || !resetPasswordForm) return false;
+      loginForm.hidden = true;
+      invitePasswordForm.hidden = true;
+      document.getElementById('forgot-password-form').hidden = true;
+      resetPasswordForm.hidden = false;
+      document.getElementById('reset-new-password')?.focus();
+      return true;
+    };
     const showInvitePasswordForm = async session => {
+      if (showResetPasswordForm(session)) return;
       if (!session?.user || inviteCheckRunning || !invitePasswordForm.hidden) return;
       inviteCheckRunning = true;
       try {
@@ -367,6 +379,10 @@
     });
     supabaseClient.auth.getSession().then(({ data, error }) => {
       if (error) throw error;
+      if (!data.session && isRecoveryCallback && loginMessage) {
+        loginMessage.textContent = 'Liên kết đặt lại mật khẩu đã hết hạn hoặc không hợp lệ. Hãy yêu cầu gửi liên kết mới.';
+        return;
+      }
       if (!data.session && isInviteCallback && loginMessage) {
         loginMessage.textContent = 'Liên kết lời mời chưa xác thực được. Hãy mở lại email mời hoặc nhờ quản trị viên gửi lời mời mới.';
         return;
@@ -405,18 +421,63 @@
   }
 
   const forgotLink = document.getElementById('forgot-link');
-  if (forgotLink) forgotLink.addEventListener('click', event => {
+  const forgotPasswordForm = document.getElementById('forgot-password-form');
+  if (forgotLink && forgotPasswordForm && loginForm) forgotLink.addEventListener('click', event => {
     event.preventDefault();
-    const message = document.getElementById('login-message');
-    if (supabaseClient) {
-      const email = document.getElementById('login-email')?.value.trim();
-      if (!email) { message.textContent = 'Nhập email trước để nhận liên kết đặt lại mật khẩu.'; return; }
-      supabaseClient.auth.resetPasswordForEmail(email, emailRedirectUrl() ? { redirectTo: emailRedirectUrl() } : undefined)
-        .then(({ error }) => { message.textContent = error ? friendlyAuthError(error) : 'Đã gửi hướng dẫn đặt lại mật khẩu tới email của bạn.'; })
-        .catch(error => { message.textContent = friendlyAuthError(error); });
-      return;
+    document.getElementById('reset-email').value = document.getElementById('login-email')?.value.trim() || '';
+    document.getElementById('reset-request-message').textContent = supabaseClient ? '' : 'Chưa kết nối được Supabase. Hãy thử lại sau.';
+    forgotPasswordForm.hidden = false;
+    loginForm.hidden = true;
+    document.getElementById('reset-email').focus();
+  });
+  document.querySelectorAll('[data-show-login]').forEach(link => link.addEventListener('click', event => {
+    event.preventDefault();
+    forgotPasswordForm.hidden = true;
+    loginForm.hidden = false;
+    document.getElementById('login-email')?.focus();
+  }));
+  if (forgotPasswordForm) forgotPasswordForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const message = document.getElementById('reset-request-message');
+    const email = document.getElementById('reset-email').value.trim();
+    if (!supabaseClient) { message.textContent = 'Chưa kết nối được Supabase. Hãy thử lại sau.'; return; }
+    const button = forgotPasswordForm.querySelector('[type="submit"]');
+    button.disabled = true;
+    message.classList.remove('is-success');
+    message.textContent = 'Đang gửi liên kết…';
+    try {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: emailRedirectUrl() });
+      if (error) throw error;
+      message.classList.add('is-success');
+      message.textContent = 'Nếu email này đã đăng ký, hướng dẫn đặt lại mật khẩu sẽ được gửi tới hộp thư. Kiểm tra cả mục thư rác.';
+    } catch (error) {
+      message.textContent = friendlyAuthError(error);
+      button.disabled = false;
     }
-    message.textContent = 'Nhập email rồi dùng chức năng quên mật khẩu sau khi cấu hình Supabase.';
+  });
+  if (resetPasswordForm) resetPasswordForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const message = document.getElementById('reset-password-message');
+    const password = document.getElementById('reset-new-password').value;
+    const confirmation = document.getElementById('reset-confirm-password').value;
+    if (password.length < 8) { message.textContent = 'Mật khẩu cần có ít nhất 8 ký tự.'; return; }
+    if (password !== confirmation) { message.textContent = 'Mật khẩu xác nhận chưa khớp.'; return; }
+    const button = resetPasswordForm.querySelector('[type="submit"]');
+    button.disabled = true;
+    message.textContent = 'Đang lưu mật khẩu mới…';
+    try {
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) throw error;
+      await supabaseClient.auth.signOut();
+      history.replaceState(null, '', window.location.pathname);
+      resetPasswordForm.hidden = true;
+      loginForm.hidden = false;
+      document.getElementById('login-message').classList.add('is-success');
+      document.getElementById('login-message').textContent = 'Đã đổi mật khẩu. Đăng nhập bằng mật khẩu mới của bạn.';
+    } catch (error) {
+      message.textContent = friendlyAuthError(error);
+      button.disabled = false;
+    }
   });
 
   const signupForm = document.getElementById('signup-form');

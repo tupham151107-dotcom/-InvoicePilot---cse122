@@ -66,6 +66,7 @@ h1, h2, h3, p { margin-top: 0; }
 .form-footer { margin-top: 18px; color: #8794a7; font-size: 10px; text-align: center; }
 .form-footer a { font-weight: 700; }
 .form-message { min-height: 16px; margin-top: 10px; color: var(--color-danger); font-size: 10px; }
+.form-message.is-success { color: #13805c; }
 .signup-page { display: grid; place-items: center; padding: 24px; }
 .signup-card { width: min(100%, 620px); }
 .brand-dark { margin-bottom: 30px; color: var(--color-navy); }
