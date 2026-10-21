@@ -1,36 +1,3 @@
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#102d52" />
-  <title>Đăng nhập · 19 InvoicePilot</title>
-  <link rel="stylesheet" href="common.css?v=password-recovery-otp-1" />
-</head>
-<body class="auth-page">
-  <main class="auth-layout">
-    <section class="auth-brand-panel">
-      <a class="brand" href="../index.html"><span class="brand-mark">IP</span><span>InvoicePilot</span></a>
-      <div class="auth-copy">
-        <span class="eyebrow">QUẢN LÝ HÓA ĐƠN & CÔNG NỢ</span>
-        <h1>Rõ từng hóa đơn.<br />Chủ động từng khoản thu.</h1>
-        <p>Một không gian làm việc chung giúp đội ngũ theo dõi hóa đơn, quản lý công nợ và nắm bắt dòng tiền.</p>
-      </div>
-      <div class="auth-footnote">19 InvoicePilot · Bản demo học tập</div>
-    </section>
-    <section class="auth-form-panel">
-      <form class="login-card" id="login-form">
-        <span class="eyebrow">CHÀO MỪNG TRỞ LẠI</span>
-        <h2>Đăng nhập</h2>
-        <p class="muted">Nhập tài khoản để vào không gian làm việc.</p>
-        <label for="login-email">Email</label>
-        <input id="login-email" name="email" type="email" autocomplete="username" placeholder="ten@congty.vn" required />
-        <label for="login-password">Mật khẩu</label>
-        <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu" required />
-        <div class="form-row"><label class="check-label"><input type="checkbox" checked /> Ghi nhớ đăng nhập</label><a href="#forgot" id="forgot-link">Quên mật khẩu?</a></div>
-        <button class="button button-primary" type="submit">Đăng nhập <span aria-hidden="true">→</span></button>
-        <div class="demo-note"><strong>Đăng nhập</strong><br /><small>Hệ thống tự mở đúng giao diện theo vai trò đã cấp cho tài khoản.</small></div>
-        <div class="form-footer">Chưa có tài khoản? <a href="signup.html">Đăng ký doanh nghiệp</a></div>
         <div class="form-message" id="login-message" role="status" aria-live="polite"></div>
       </form>
       <section class="recovery-overlay" id="password-recovery-modal" role="dialog" aria-modal="true" aria-labelledby="recovery-title" hidden>
@@ -79,8 +46,9 @@
   <script src="vendor/supabase-2.110.8.js"></script>
   <script src="supabase-config.js"></script>
   <script src="common.js?v=password-recovery-otp-1"></script>
-</body>
-  <script src="assistant-widget.js?v=1"></script>
+  <script src="assistant-widget.js?v=2"></script>
   <script src="https://cdn.botpress.cloud/webchat/v5.0/inject.js"></script>
   <script src="https://files.bpcontent.cloud/2026/10/21/20/20261021202435-VY6UYVGS.js" defer></script>
+</body>
 </html>
+
