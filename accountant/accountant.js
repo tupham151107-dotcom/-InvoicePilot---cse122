@@ -21,7 +21,7 @@ IPCommon.requireRole('accountant').then(async profile => {
   const workspace = document.getElementById('workspace');
 
   function invoiceTable(items) {
-    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Đã thu</th><th>Còn lại</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.id)}</strong></td><td>${safe(row.customer)}</td><td>${row.due}</td><td><strong>${format(row.amount)}</strong></td><td>${format(row.amountPaid)}</td><td>${format(row.balance)}</td><td><span class="role-badge ${row.status === 'Quá hạn' ? 'pending' : ''}">${row.status}</span></td><td><button type="button" data-invoice-id="${safe(row.id)}">Chi tiết</button>${row.balance > 0 ? ` <button type="button" data-record-payment="${safe(row.dbId)}">Ghi nhận thanh toán</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Đã thu</th><th>Còn lại</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.id)}</strong></td><td>${safe(row.customer)}</td><td>${row.due}</td><td><strong>${format(row.amount)}</strong></td><td>${format(row.amountPaid)}</td><td>${format(row.balance)}</td><td><span class="role-badge ${row.status === 'Quá hạn' ? 'pending' : ''}">${row.status}</span></td><td><button type="button" data-invoice-id="${safe(row.id)}">Chi tiết</button>${row.balance > 0 ? ` <button type="button" data-record-payment="${safe(row.dbId)}">Xác nhận thanh toán</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function paymentTable(items) {
@@ -90,6 +90,19 @@ IPCommon.requireRole('accountant').then(async profile => {
     modal.innerHTML = `<section class="accountant-modal invoice-create-modal" role="dialog" aria-modal="true" aria-labelledby="create-invoice-title"><header class="accountant-modal-header"><div><span class="eyebrow">KẾ TOÁN</span><h2 id="create-invoice-title">Tạo hóa đơn</h2></div><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></header><form class="invoice-create-form" data-create-invoice-form><label>Khách hàng<select name="customer" required>${customers.map(customer => `<option value="${safe(customer.id)}">${safe(customer.name)}</option>`).join('')}</select></label><div class="invoice-create-fields"><label>Ngày phát hành<input name="issued" type="date" value="${todayISO}" required></label><label>Hạn thanh toán<input name="due" type="date" value="${dueISO}" required></label></div><label>Mô tả hàng hóa / dịch vụ<input name="description" type="text" placeholder="Ví dụ: Dịch vụ theo hợp đồng" required></label><label>Tổng tiền (₫)<input name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 12.000.000" required></label><footer class="accountant-modal-footer"><button class="button" type="button" data-close-accountant-modal>Hủy</button><button class="button button-primary" type="submit">Tạo hóa đơn</button></footer></form></section>`;
     workspace.append(modal);
     modal.querySelector('[name="customer"]')?.focus();
+  }
+
+
+  function showConfirmPaymentForm(invoice) {
+    workspace.querySelector('[data-confirm-payment-modal]')?.remove();
+    const modal = document.createElement('div');
+    modal.className = 'accountant-modal-backdrop';
+    modal.dataset.confirmPaymentModal = '';
+    const html = '<section class="accountant-modal invoice-create-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-payment-title"><header class="accountant-modal-header"><div><span class="eyebrow">XÁC NHẬN KHOẢN THU</span><h2 id="confirm-payment-title">${safe(invoice.id)}</h2><p>${safe(invoice.customer)} · Còn phải thu ${format(invoice.balance)}</p></div><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></header><form class="invoice-create-form" data-confirm-payment-form data-invoice-id="${safe(invoice.dbId)}"><label>Số tiền khách đã thanh toán (₫)<input name="amount" type="text" inputmode="numeric" autocomplete="off" value="${Math.round(invoice.balance)}" required></label><label>Phương thức thanh toán<select name="method"><option value="bank">Chuyển khoản</option><option value="cash">Tiền mặt</option><option value="card">Thẻ</option><option value="other">Khác</option></select></label><label>Mã giao dịch / ghi chú<input name="reference" type="text" maxlength="160" placeholder="Không bắt buộc"></label><p class="role-message" data-payment-error role="alert"></p><footer class="accountant-modal-footer"><button class="button" type="button" data-close-accountant-modal>Hủy</button><button class="button button-primary" type="submit">Xác nhận đã nhận tiền</button></footer></form></section>'
+    modal.innerHTML = String.fromCharCode(96) + html + String.fromCharCode(96);
+    workspace.append(modal);
+    modal.querySelector('[name="amount"]')?.focus();
+    modal.querySelector('[name="amount"]')?.select();
   }
 
   function dateLabel(isoDate) {
@@ -202,23 +215,7 @@ IPCommon.requireRole('accountant').then(async profile => {
     if (addPayment) {
       const invoice = invoices.find(item => item.dbId === addPayment.dataset.recordPayment);
       if (!invoice) return;
-      const entered = window.prompt(`Nhập số tiền nhận cho ${invoice.id}. Còn phải thu: ${format(invoice.balance)}`, String(invoice.balance));
-      if (entered === null) return;
-      const amount = Number(String(entered).replace(/[^\d]/g, ''));
-      if (!amount || amount > invoice.balance) { window.alert(`Nhập số tiền lớn hơn 0 và không vượt quá ${format(invoice.balance)}.`); return; }
-      addPayment.disabled = true;
-      addPayment.textContent = 'Đang lưu…';
-      try {
-        await IPCommon.recordCompanyInvoicePayment(invoice.dbId, amount, 'bank');
-        await refreshSharedBusinessData();
-        const status = workspace.querySelector('[data-accountant-message]');
-        if (status) status.textContent = `Đã lưu khoản thu ${format(amount)} cho ${invoice.id}. Số dư còn ${format(Math.max(0, invoice.balance - amount))}; lịch sử được lưu trong Supabase.`;
-      } catch (error) {
-        addPayment.disabled = false;
-        addPayment.textContent = 'Ghi nhận thanh toán';
-        const status = workspace.querySelector('[data-accountant-message]');
-        if (status) status.textContent = error.message || 'Không lưu được khoản thanh toán.';
-      }
+      showConfirmPaymentForm(invoice);
       return;
     }
     const historyButton = event.target.closest('[data-invoice-history]');
@@ -241,7 +238,7 @@ IPCommon.requireRole('accountant').then(async profile => {
       window.print();
       return;
     }
-    const modalBackdrop = event.target.closest('[data-company-profile-modal], [data-create-invoice-modal]');
+    const modalBackdrop = event.target.closest('[data-company-profile-modal], [data-create-invoice-modal], [data-confirm-payment-modal]');
     if (event.target.closest('[data-close-accountant-modal]') || (modalBackdrop && event.target === modalBackdrop)) {
       modalBackdrop?.remove();
       return;
@@ -265,6 +262,33 @@ IPCommon.requireRole('accountant').then(async profile => {
   }
 
   workspace.addEventListener('submit', async event => {
+    const paymentForm = event.target.closest('[data-confirm-payment-form]');
+    if (paymentForm) {
+      event.preventDefault();
+      const values = new FormData(paymentForm);
+      const amount = Number(String(values.get('amount') || '').replace(/[^\d]/g, ''));
+      const invoice = invoices.find(item => item.dbId === paymentForm.dataset.invoiceId);
+      const errorBox = paymentForm.querySelector('[data-payment-error]');
+      const submit = paymentForm.querySelector('[type="submit"]');
+      if (!invoice) { errorBox.textContent = 'Không tìm thấy hóa đơn. Hãy tải lại trang.'; return; }
+      if (!amount || amount > invoice.balance) { errorBox.textContent = 'Số tiền không hợp lệ hoặc vượt quá số dư còn phải thu.'; return; }
+      submit.disabled = true;
+      submit.textContent = 'Đang lưu xác nhận…';
+      errorBox.textContent = '';
+      try {
+        await IPCommon.recordCompanyInvoicePayment(invoice.dbId, amount, String(values.get('method') || 'bank'), String(values.get('reference') || '').trim());
+        await refreshSharedBusinessData();
+        workspace.querySelector('[data-confirm-payment-modal]')?.remove();
+        const status = workspace.querySelector('[data-accountant-message]');
+        if (status) status.textContent = 'Đã xác nhận và lưu khoản thu ' + format(amount) + ' cho ' + invoice.id + ' lên Supabase. Số dư còn ' + format(Math.max(0, invoice.balance - amount)) + '.';
+      } catch (error) {
+        submit.disabled = false;
+        submit.textContent = 'Xác nhận đã nhận tiền';
+        errorBox.textContent = error.message || 'Không lưu được xác nhận thanh toán.';
+      }
+      return;
+    }
+
     const form = event.target.closest('[data-create-invoice-form]');
     if (!form) return;
     event.preventDefault();
