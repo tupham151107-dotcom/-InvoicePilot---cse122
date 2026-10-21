@@ -25,7 +25,7 @@ IPCommon.requireRole('accountant').then(async profile => {
   }
 
   function paymentTable(items) {
-    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã giao dịch</th><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày nhận</th><th>Số tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${row.id}</strong></td><td>${row.invoice}</td><td>${row.customer}</td><td>${row.date}</td><td><strong>${format(row.amount)}</strong></td><td><span class="role-badge ${row.status === 'Chờ đối soát' ? 'pending' : ''}">${row.status}</span></td><td>${row.status === 'Chờ đối soát' ? `<button type="button" data-reconcile="${row.id}">Đối soát</button>` : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã giao dịch</th><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày nhận</th><th>Số tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${row.id}</strong></td><td>${row.invoice}</td><td>${row.customer}</td><td>${row.date}</td><td><strong>${format(row.amount)}</strong></td><td><span class="role-badge ${row.status === 'Chờ đối soát' ? 'pending' : ''}">${row.status}</span></td><td>${row.status === 'Chờ đối soát' ? `<button type="button" data-reconcile="${row.dbId}">Đối soát</button>` : '—'}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function customerTable(items) {
@@ -183,10 +183,19 @@ IPCommon.requireRole('accountant').then(async profile => {
     }
     const reconcile = event.target.closest('[data-reconcile]');
     if (reconcile) {
-      const payment = payments.find(item => item.id === reconcile.dataset.reconcile);
-      if (payment) payment.status = 'Đã đối soát';
-      render('payments');
-      document.querySelector('[data-accountant-message]').textContent = `Đã đối soát giao dịch ${reconcile.dataset.reconcile}.`;
+      reconcile.disabled = true;
+      reconcile.textContent = 'Đang lưu…';
+      try {
+        await IPCommon.reconcileCompanyInvoicePayment(reconcile.dataset.reconcile);
+        await refreshSharedBusinessData();
+        const status = workspace.querySelector('[data-accountant-message]');
+        if (status) status.textContent = 'Đã lưu trạng thái đối soát lên Supabase và đồng bộ cho doanh nghiệp.';
+      } catch (error) {
+        reconcile.disabled = false;
+        reconcile.textContent = 'Đối soát';
+        const status = workspace.querySelector('[data-accountant-message]');
+        if (status) status.textContent = error.message || 'Không lưu được trạng thái đối soát.';
+      }
       return;
     }
     const addPayment = event.target.closest('[data-record-payment]');
@@ -251,7 +260,7 @@ IPCommon.requireRole('accountant').then(async profile => {
     const data = await IPCommon.getCompanyBusinessData();
     customers = data.customers;
     invoices = data.invoices;
-    payments.splice(0, payments.length, ...(data.payments || []).map(item => ({ id: `PAY-${item.id.slice(0, 8)}`, invoice: item.invoice, customer: item.customer, date: new Intl.DateTimeFormat('vi-VN').format(new Date(item.paidAt)), amount: item.amount, status: 'Đã ghi nhận' })));
+    payments.splice(0, payments.length, ...(data.payments || []).map(item => ({ id: `PAY-${item.id.slice(0, 8)}`, dbId: item.id, invoice: item.invoice, customer: item.customer, date: new Intl.DateTimeFormat('vi-VN').format(new Date(item.paidAt)), amount: item.amount, status: item.reconciledAt ? 'Đã đối soát' : 'Chờ đối soát' })));
     render(location.hash.slice(1) || 'overview');
   }
 

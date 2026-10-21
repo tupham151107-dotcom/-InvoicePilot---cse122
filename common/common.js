@@ -117,16 +117,24 @@
     async getCompanyBusinessData() {
       if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
       const companyAdminId = window.IP_AUTH_PROFILE.company_admin_id || window.IP_AUTH_PROFILE.id;
-      const [customersResult, invoicesResult, paymentsResult] = await Promise.all([
+      const userId = window.IP_AUTH_PROFILE.id;
+      const [customersResult, invoicesResult, paymentsResult, notificationsResult, notificationReadsResult] = await Promise.all([
         supabaseClient.from('ip_customers').select('*').eq('company_admin_id', companyAdminId).order('created_at', { ascending: false }),
         supabaseClient.from('ip_invoices').select('*').eq('company_admin_id', companyAdminId).order('issue_date', { ascending: false }),
-        supabaseClient.from('ip_payments').select('*').eq('company_admin_id', companyAdminId).order('paid_at', { ascending: false }).limit(100)
+        supabaseClient.from('ip_payments').select('*').eq('company_admin_id', companyAdminId).order('paid_at', { ascending: false }).limit(100),
+        supabaseClient.from('ip_notifications').select('*').eq('company_admin_id', companyAdminId).order('created_at', { ascending: false }).limit(50),
+        supabaseClient.from('ip_notification_reads').select('notification_id,read_at').eq('user_id', userId)
       ]);
       if (customersResult.error) throw customersResult.error;
       if (invoicesResult.error) throw invoicesResult.error;
       const paymentsUnavailable = paymentsResult.error?.code === '42P01' || paymentsResult.error?.code === 'PGRST205';
       if (paymentsResult.error && !paymentsUnavailable) throw paymentsResult.error;
+      if (notificationsResult.error) throw notificationsResult.error;
+      if (notificationReadsResult.error) throw notificationReadsResult.error;
       invoicePaymentsTableReady = !paymentsUnavailable;
+      const readById = new Map((notificationReadsResult.data || []).map(item => [item.notification_id, item.read_at]));
+      const notifications = (notificationsResult.data || []).map(item => ({ ...item, readAt: readById.get(item.id) || null }));
+      window.IP_SHARED_NOTIFICATIONS_UNREAD = notifications.some(item => !item.readAt);
       const invoiceRows = invoicesResult.data || [];
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const formatDate = value => value ? new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`)) : '—';
@@ -138,7 +146,7 @@
       });
       const payments = paymentsUnavailable ? [] : (paymentsResult.data || []).map(row => {
         const invoice = invoices.find(item => item.dbId === row.invoice_id);
-        return { id: row.id, invoiceId: row.invoice_id, invoice: invoice?.id || '', customer: invoice?.customer || 'Khách hàng', amount: Number(row.amount) || 0, method: row.payment_method || '', reference: row.reference || '', paidAt: row.paid_at, createdAt: row.created_at };
+        return { id: row.id, invoiceId: row.invoice_id, invoice: invoice?.id || '', customer: invoice?.customer || 'Khách hàng', amount: Number(row.amount) || 0, method: row.payment_method || '', reference: row.reference || '', paidAt: row.paid_at, createdAt: row.created_at, reconciledAt: row.reconciled_at || null, reconciledBy: row.reconciled_by || null };
       });
       const needsReminder = invoices.some(invoice => invoice.balance > 0 && invoice.dueDate && (new Date(`${invoice.dueDate}T00:00:00`) - today) / 86400000 <= 7);
       if (invoices.some(invoice => invoice.status === 'Đã thanh toán') || payments.length || needsReminder) {
@@ -156,7 +164,7 @@
       const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
       const reminders = invoices.filter(invoice => invoice.balance > 0 && invoice.dueDate && Math.ceil((new Date(`${invoice.dueDate}T00:00:00`) - todayDate) / 86400000) <= 7)
         .map(invoice => ({ ...invoice, daysUntilDue: Math.ceil((new Date(`${invoice.dueDate}T00:00:00`) - todayDate) / 86400000) }));
-      return { customers, invoices, payments, reminders, paymentLedgerReady: !paymentsUnavailable };
+      return { customers, invoices, payments, reminders, notifications, paymentLedgerReady: !paymentsUnavailable };
     },
     async createCompanyCustomer(customer) {
       if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
@@ -207,6 +215,42 @@
       }
       return data;
     },
+    async reconcileCompanyInvoicePayment(paymentId) {
+      if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
+      if (!['admin', 'accountant'].includes(window.IP_AUTH_PROFILE?.role)) throw new Error('Chỉ Kế toán hoặc Quản trị viên mới có thể đối soát.');
+      const { data, error } = await supabaseClient.rpc('reconcile_company_invoice_payment', { p_payment_id: paymentId });
+      if (error) throw error;
+      return data;
+    },
+    async getCompanyNotifications(limit = 50) {
+      if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
+      const companyAdminId = window.IP_AUTH_PROFILE.company_admin_id || window.IP_AUTH_PROFILE.id;
+      const userId = window.IP_AUTH_PROFILE.id;
+      const [notificationsResult, readsResult] = await Promise.all([
+        supabaseClient.from('ip_notifications').select('*').eq('company_admin_id', companyAdminId).order('created_at', { ascending: false }).limit(limit),
+        supabaseClient.from('ip_notification_reads').select('notification_id,read_at').eq('user_id', userId)
+      ]);
+      if (notificationsResult.error) throw notificationsResult.error;
+      if (readsResult.error) throw readsResult.error;
+      const readById = new Map((readsResult.data || []).map(item => [item.notification_id, item.read_at]));
+      const notifications = (notificationsResult.data || []).map(item => ({ ...item, readAt: readById.get(item.id) || null }));
+      window.IP_SHARED_NOTIFICATIONS_UNREAD = notifications.some(item => !item.readAt);
+      return notifications;
+    },
+    async markCompanyNotificationsRead(notificationIds = []) {
+      if (!supabaseClient || !window.IP_AUTH_PROFILE?.id) throw new Error('Phiên đăng nhập không hợp lệ.');
+      const userId = window.IP_AUTH_PROFILE.id;
+      let ids = notificationIds;
+      if (!ids.length) {
+        const unread = await this.getCompanyNotifications(100);
+        ids = unread.filter(item => !item.readAt).map(item => item.id);
+      }
+      if (!ids.length) { window.IP_SHARED_NOTIFICATIONS_UNREAD = false; return; }
+      const rows = ids.map(notification_id => ({ notification_id, user_id: userId }));
+      const { error } = await supabaseClient.from('ip_notification_reads').upsert(rows, { onConflict: 'notification_id,user_id', ignoreDuplicates: true });
+      if (error) throw error;
+      window.IP_SHARED_NOTIFICATIONS_UNREAD = false;
+    },
     async getCompanyInvoiceHistory(invoiceId) {
       if (!supabaseClient) throw new Error('Chưa kết nối được Supabase.');
       const { data, error } = await supabaseClient.from('ip_invoice_history').select('event_type, changed_by, old_values, new_values, changed_at').eq('invoice_id', invoiceId).order('changed_at', { ascending: false }).limit(30);
@@ -223,6 +267,8 @@
         .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_customers', filter: `company_admin_id=eq.${companyAdminId}` }, onChange)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_invoices', filter: `company_admin_id=eq.${companyAdminId}` }, onChange);
       if (invoicePaymentsTableReady) channel.on('postgres_changes', { event: '*', schema: 'public', table: 'ip_payments', filter: `company_admin_id=eq.${companyAdminId}` }, onChange);
+      channel.on('postgres_changes', { event: '*', schema: 'public', table: 'ip_notifications', filter: `company_admin_id=eq.${companyAdminId}` }, onChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ip_notification_reads', filter: `user_id=eq.${window.IP_AUTH_PROFILE.id}` }, onChange);
       return channel.subscribe();
     },
     async requireRole(role) {
@@ -279,7 +325,7 @@
           <div class="shared-sidebar-bottom"><small>Đang đăng nhập</small><strong>${label}</strong></div>
         </aside>
         <main class="shared-main">
-          <header class="shared-header"><span><strong>${active}</strong></span><div class="shared-header-actions"><input type="search" placeholder="Tìm hóa đơn, khách hàng..." aria-label="Tìm kiếm"><button class="notification-bell shared-bell" type="button" aria-label="Thông báo" data-shared-notification-bell="${role}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>${this.hasUnreadNotifications(role) ? '<i class="dot notification-dot-indicator"></i>' : ''}</button><span class="shared-avatar">${displayName.slice(0, 2).toUpperCase()}</span><span class="shared-user-meta"><strong>${displayName}</strong><small>${label}</small></span><button class="shared-logout" type="button" data-shared-logout>Đăng xuất</button></div></header>
+          <header class="shared-header"><span><strong>${active}</strong></span><div class="shared-header-actions"><input type="search" placeholder="Tìm hóa đơn, khách hàng..." aria-label="Tìm kiếm"><button class="notification-bell shared-bell" type="button" aria-label="Thông báo" data-shared-notification-bell="${role}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>${window.IP_SHARED_NOTIFICATIONS_UNREAD ?? this.hasUnreadNotifications(role) ? '<i class="dot notification-dot-indicator"></i>' : ''}</button><span class="shared-avatar">${displayName.slice(0, 2).toUpperCase()}</span><span class="shared-user-meta"><strong>${displayName}</strong><small>${label}</small></span><button class="shared-logout" type="button" data-shared-logout>Đăng xuất</button></div></header>
           <div class="shared-content">${document.getElementById('role-content')?.innerHTML || ''}</div>
         </main>`;
       const searchInput = app.querySelector('.shared-header-actions input[type="search"]');
@@ -341,16 +387,29 @@
     panel.innerHTML = '<strong>Thông báo hóa đơn</strong><p>Đang tải…</p>';
     bell.insertAdjacentElement('afterend', panel);
     try {
-      const { invoices, payments = [], reminders = [] } = await window.IPCommon.getCompanyBusinessData();
-      const paymentItems = payments.slice(0, 6).map(payment => `<article><b>${escapeHTML(payment.invoice)} · Đã nhận ${window.IPCommon.money(payment.amount)}</b><small>${escapeHTML(payment.customer)} · ${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(payment.paidAt))}</small></article>`);
-      const reminderItems = reminders.slice(0, 6).map(invoice => `<article><b>${escapeHTML(invoice.id)} · ${invoice.daysUntilDue < 0 ? `Quá hạn ${Math.abs(invoice.daysUntilDue)} ngày` : invoice.daysUntilDue === 0 ? 'Đến hạn hôm nay' : `Còn ${invoice.daysUntilDue} ngày đến hạn`}</b><small>${escapeHTML(invoice.customer)} · Còn phải thu ${window.IPCommon.money(invoice.balance)}</small></article>`);
-      const legacyPaid = payments.length ? [] : invoices.filter(invoice => invoice.status === 'Đã thanh toán').slice(0, 6).map(invoice => `<article><b>${escapeHTML(invoice.id)} đã thanh toán</b><small>${escapeHTML(invoice.customer)} · ${window.IPCommon.money(invoice.amount)}</small></article>`);
-      const items = [...paymentItems, ...reminderItems, ...legacyPaid];
-      panel.innerHTML = `<strong>Thông báo hóa đơn</strong>${items.length ? items.join('') : '<p>Chưa có thanh toán hoặc hóa đơn gần đến hạn.</p>'}`;
+      const notifications = await window.IPCommon.getCompanyNotifications(20);
+      const items = notifications.map(item => `<article class="${item.readAt ? '' : 'unread'}"><b>${escapeHTML(item.title)}</b><small>${escapeHTML(item.message)} · ${new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.created_at))}</small></article>`);
+      panel.innerHTML = `<strong>Thông báo doanh nghiệp</strong>${items.length ? items.join('') : '<p>Chưa có thông báo mới.</p>'}${notifications.some(item => !item.readAt) ? '<button type="button" data-company-notifications-read>Đánh dấu đã đọc</button>' : ''}`;
     } catch (error) {
       panel.innerHTML = `<strong>Thông báo hóa đơn</strong><p>${escapeHTML(error.message || 'Không tải được thông báo.')}</p>`;
     }
   }, true);
+  document.addEventListener('click', async event => {
+    const markRead = event.target.closest('[data-company-notifications-read]');
+    if (!markRead) return;
+    markRead.disabled = true;
+    try {
+      await window.IPCommon.markCompanyNotificationsRead();
+      document.querySelectorAll('.notification-dot-indicator').forEach(dot => dot.remove());
+      document.querySelectorAll('.notification-item.unread').forEach(item => item.classList.remove('unread'));
+      document.querySelectorAll('.notification-item .notification-dot').forEach(dot => dot.remove());
+      document.querySelectorAll('[data-company-notifications-read]').forEach(button => button.remove());
+      document.querySelector('.ip-paid-notifications')?.remove();
+    } catch (error) {
+      markRead.disabled = false;
+      markRead.textContent = error.message || 'Không lưu được trạng thái đã đọc.';
+    }
+  });
   document.addEventListener('click', event => {
     if (!event.target.closest('.ip-paid-notifications') && !event.target.closest('.notification-bell')) document.querySelector('.ip-paid-notifications')?.remove();
   });

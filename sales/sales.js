@@ -98,16 +98,7 @@ IPCommon.requireRole('sales').then(async profile => {
         });
       } catch { /* Settings remain usable when browser storage is unavailable. */ }
     }
-    const bell = workspace.querySelector('[data-shared-notification-bell="sales"]');
-    bell?.addEventListener('click', () => {
-      const oldPanel = workspace.querySelector('.sales-notification-menu');
-      if (oldPanel) { oldPanel.remove(); return; }
-      const unread = IPCommon.hasUnreadNotifications('sales');
-      const panel = document.createElement('section');
-      panel.className = 'sales-notification-menu';
-      panel.innerHTML = `<div class="sales-notification-heading"><strong>Thông báo Kinh doanh</strong><span>${unread ? 'Mới' : 'Đã xem'}</span></div><article><b>Hóa đơn quá hạn cần theo dõi</b><small>Nội thất Mộc Nhiên · IP-2026-008 · 48.200.000 ₫</small><button type="button" class="sales-notification-link" data-section="reminders">Mở nhắc thanh toán</button></article><button type="button" class="sales-notification-mark" data-sales-mark-read ${unread ? '' : 'disabled'}>Đánh dấu đã đọc</button>`;
-      bell.closest('.shared-header-actions').append(panel);
-    });
+    // The shared shell loads company notifications from Supabase for every role.
   }
 
   window.addEventListener('invoicepilot:global-search-select', event => {
@@ -120,15 +111,6 @@ IPCommon.requireRole('sales').then(async profile => {
   });
 
   workspace.addEventListener('click', event => {
-    const bell = event.target.closest('[data-shared-notification-bell="sales"]');
-    if (bell) return;
-    const markRead = event.target.closest('[data-sales-mark-read]');
-    if (markRead) {
-      IPCommon.markNotificationsRead('sales');
-      workspace.querySelector('.sales-notification-menu')?.remove();
-      workspace.querySelector('[data-shared-notification-bell="sales"] .notification-dot-indicator')?.remove();
-      return;
-    }
     if (event.target.closest('[data-save-sales-settings]')) {
       const settings = Object.fromEntries([...workspace.querySelectorAll('[data-sales-setting]')].map(input => [input.dataset.salesSetting, input.checked]));
       try { localStorage.setItem(salesSettingsStorageKey, JSON.stringify(settings)); } catch { /* Keep current choices visible for this visit. */ }
@@ -181,7 +163,6 @@ IPCommon.requireRole('sales').then(async profile => {
     else if (opportunity) salesModals.showOpportunity(opportunity.dataset.opportunity);
   });
   document.addEventListener('click', event => {
-    if (!event.target.closest('.sales-notification-menu') && !event.target.closest('[data-shared-notification-bell="sales"]')) workspace.querySelector('.sales-notification-menu')?.remove();
   });
 
   workspace.addEventListener('input', event => {
