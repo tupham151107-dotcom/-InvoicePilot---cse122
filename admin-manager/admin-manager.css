@@ -1,3 +1,5 @@
+/* ===== CSS DÙNG CHUNG: NỀN TẢNG VÀ THÀNH PHẦN CHUNG ===== */
+
 :root {
   --navy: #102d52;
   --navy-2: #183b66;
@@ -1655,6 +1657,7 @@ textarea {
   font-size: 9px
 }
 
+/* ===== TRANG TỔNG QUAN QUẢN TRỊ VIÊN ===== */
 .admin-overview-content {
   padding-top: 38px
 }
@@ -2258,6 +2261,7 @@ textarea {
   font-size: 12px
 }
 
+/* ===== TRANG QUẢN LÝ KHÁCH HÀNG ===== */
 .customer-stats {
   grid-template-columns: repeat(3,minmax(0,1fr));
   gap: 13px;
@@ -2408,6 +2412,7 @@ textarea {
   border-radius: 7px
 }
 
+/* ===== TRANG CÀI ĐẶT ===== */
 .settings-content {
   padding-top: 0
 }
@@ -2573,6 +2578,7 @@ textarea {
     font-size: 10px
   }
 
+  /* Khách hàng: điều chỉnh bảng trên màn hình nhỏ */
   .customer-name-cell {
     min-width: 175px
   }
@@ -2605,6 +2611,7 @@ textarea {
 
 }
 
+/* Khách hàng: bố cục trên điện thoại */
 @media(max-width:480px) {
   .customer-stats {
     grid-template-columns: 1fr;
@@ -2650,6 +2657,7 @@ textarea {
 
 }
 
+/* Khách hàng: tìm kiếm, lọc và xuất dữ liệu */
 .customer-tools {
   display: flex;
   align-items: center;
@@ -2715,6 +2723,7 @@ textarea {
   outline-offset: 2px
 }
 
+/* Khách hàng: bố cục bộ lọc trên màn hình nhỏ */
 @media(max-width:760px) {
   .customer-panel>.panel-title {
     align-items: flex-start;
