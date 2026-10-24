@@ -303,46 +303,44 @@
   padding: 0 19px
 }
 
+
+@media(max-width:1100px) {
   .admin-shell .sidebar {
     width: 245px
   }
 
-
   .admin-shell .main-area {
     margin-left: 245px
   }
-
 
   .admin-shell .topbar {
     padding: 0 22px;
     gap: 13px
   }
 
-
   .admin-overview-row {
     grid-template-columns: 1.5fr 1fr
   }
 
-
   .admin-shell .stat-value {
     font-size: 22px
   }
+}
 
+
+@media(max-width:850px) {
   .admin-shell .sidebar {
     width: 66px;
     padding: 18px 9px
   }
 
-
   .admin-shell .brand {
     padding: 0 8px 24px
   }
 
-
   .admin-shell .company-switch,.admin-shell .brand-name,.admin-shell .nav-label,.admin-shell .nav-item span,.admin-shell .nav-count,.admin-shell .side-note,.admin-shell .side-home {
     display: none
   }
-
 
   .admin-shell .nav-item:not(.active) {
     background: transparent;
@@ -350,40 +348,34 @@
     box-shadow: none
   }
 
-
   .admin-shell .nav-item.active {
     box-shadow: none
   }
-
 
   .admin-shell .main-area {
     margin-left: 66px
   }
 
-
   .admin-shell .topbar {
     padding: 0 14px
   }
-
 
   .admin-shell .crumb {
     display: none
   }
 
-
   .admin-overview-row {
     grid-template-columns: 1fr
   }
-
 
   .admin-stats {
     grid-template-columns: repeat(2,minmax(0,1fr))
   }
 
-
   .admin-shell .user-menu>span:last-child,.logout-button {
     display: none
   }
+}
 
 
 .admin-shell .user-menu .user-meta {
@@ -400,74 +392,65 @@
   line-height: 1.2
 }
 
+
+@media(max-width:520px) {
   .admin-shell .topbar {
     height: 60px;
     gap: 8px
   }
 
-
   .admin-shell .top-actions {
     gap: 5px
   }
-
 
   .admin-shell .top-link {
     width: 34px;
     height: 34px
   }
 
-
   .admin-overview-content {
     padding-top: 22px
   }
-
 
   .admin-heading h1 {
     font-size: 23px
   }
 
-
   .admin-heading p {
     font-size: 11px
   }
-
 
   .admin-heading {
     gap: 8px;
     align-items: flex-start
   }
 
-
   .admin-stats {
     gap: 9px
   }
-
 
   .admin-shell .stat-card {
     min-height: 120px;
     padding: 13px
   }
 
-
   .admin-shell .stat-value,.admin-shell .stat-card:last-child .stat-value {
     font-size: 20px
   }
-
 
   .admin-shell .stat-top {
     font-size: 10px
   }
 
-
   .admin-overview-row {
     gap: 12px
   }
-
 
   .admin-chart-panel {
     min-height: 330px;
     padding: 14px
   }
+}
 
 
 /* ===== TRANG QUẢN LÝ KHÁCH HÀNG ===== */
@@ -611,36 +594,39 @@
 }
 
 
+@media(max-width:760px) {
+
   /* Khách hàng: điều chỉnh bảng trên màn hình nhỏ */
   .customer-name-cell {
     min-width: 175px
   }
+}
 
+
+/* Khách hàng: bố cục trên điện thoại */
+@media(max-width:480px) {
   .customer-stats {
     grid-template-columns: 1fr;
     gap: 8px
   }
 
-
   .admin-shell .customer-stats .stat-card {
     min-height: 67px
   }
-
 
   .customer-content>.role-page-head {
     align-items: flex-start
   }
 
-
   .customer-content>.role-page-head .btn {
     font-size: 9px
   }
-
 
   .customer-search {
     max-width: 48%;
     min-width: 130px
   }
+}
 
 
 /* Khách hàng: tìm kiếm, lọc và xuất dữ liệu */
@@ -706,17 +692,18 @@
   outline-offset: 2px
 }
 
+
+/* Khách hàng: bố cục bộ lọc trên màn hình nhỏ */
+@media(max-width:760px) {
   .customer-panel>.panel-title {
     align-items: flex-start;
     flex-direction: column
   }
 
-
   .customer-tools {
     width: 100%;
     justify-content: stretch
   }
-
 
   .customer-search {
     flex: 1;
@@ -724,48 +711,47 @@
     min-width: 0
   }
 
-
   .customer-status-filter {
     flex: 1;
     min-width: 130px
   }
 
-
   .customer-export {
     flex: none
   }
+}
 
+
+@media(max-width:480px) {
   .customer-tools {
     display: grid;
     grid-template-columns: minmax(0,1fr) auto
   }
 
-
   .customer-tools .customer-search {
     grid-column: 1/-1
   }
-
 
   .customer-tools .customer-status-filter {
     width: 100%;
     min-width: 0
   }
 
-
   .customer-export {
     width: 100%
   }
-
 
   .customer-panel .panel-title {
     padding: 15px
   }
 
-
   .customer-panel .data-table {
     min-width: 660px
   }
+}
 
+
+@media(max-width:600px) {
 
   .admin-shell .sidebar {
     position: fixed;
@@ -780,11 +766,9 @@
     box-shadow: 0 -8px 24px rgba(10,29,52,.16)
   }
 
-
   .admin-shell .brand,.admin-shell .company-switch,.admin-shell .nav-label,.admin-shell .side-note,.admin-shell .side-home,.admin-shell .sidebar-spacer {
     display: none
   }
-
 
   .admin-shell .nav-list {
     display: grid;
@@ -793,7 +777,6 @@
     width: 100%;
     gap: 4px
   }
-
 
   .admin-shell .nav-item,.admin-shell .nav-item:not(.active) {
     display: flex;
@@ -809,12 +792,10 @@
     font-size: 9px
   }
 
-
   .admin-shell .nav-item.active {
     color: #fff;
     background: #2c4d76
   }
-
 
   .admin-shell .nav-item span {
     display: block;
@@ -823,31 +804,26 @@
     text-overflow: ellipsis
   }
 
-
   .admin-shell .nav-item svg {
     width: 18px;
     height: 18px;
     flex: none
   }
 
-
   .admin-shell .nav-count {
     display: none
   }
-
 
   .admin-shell .main-area {
     margin-left: 0;
     padding-bottom: calc(76px + env(safe-area-inset-bottom))
   }
 
-
   .admin-shell .topbar {
     height: 60px;
     padding: 0 12px;
     gap: 9px
   }
-
 
   .admin-shell .global-search {
     min-width: 0;
@@ -856,75 +832,67 @@
     padding: 0 9px
   }
 
-
   .admin-shell .top-actions {
     gap: 5px
   }
-
 
   .admin-shell .top-link {
     width: 34px;
     height: 34px
   }
 
-
   .admin-shell .user-menu {
     padding: 0
   }
-
 
   .admin-shell .content {
     padding: 19px 12px 30px
   }
 
-
   .customer-panel .table-wrap {
     overscroll-behavior-x: contain
   }
-
 
   .admin-role-notification-menu {
     top: auto;
     right: 0;
     bottom: calc(76px + env(safe-area-inset-bottom));
   }
+}
 
+
+@media(max-width:380px) {
   .admin-shell .topbar {
     gap: 6px;
     padding: 0 8px
   }
 
-
   .admin-shell .global-search {
     gap: 6px
   }
-
 
   .admin-shell .global-search input {
     min-width: 0;
     font-size: 10px
   }
 
-
   .admin-shell .top-actions {
     gap: 2px
   }
-
 
   .admin-shell .top-link {
     width: 31px;
     height: 31px
   }
 
-
   .admin-shell .admin-heading h1 {
     font-size: 21px
   }
 
-
   .admin-shell .role-page-head h1 {
     font-size: 21px
   }
+}
 
 
 .admin-role-notification-menu {
@@ -1010,136 +978,3 @@
   background: #f7f8fa;
   cursor: default
 }
-
-
-  .app-shell:not(.admin-shell) .sidebar {
-    position: fixed;
-    inset: auto 0 0;
-    width: 100%;
-    height: calc(70px + env(safe-area-inset-bottom));
-    padding: 6px 5px calc(6px + env(safe-area-inset-bottom));
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    border-top: 1px solid rgba(255,255,255,.12);
-    box-shadow: 0 -8px 24px rgba(10,29,52,.16)
-  }
-
-
-  .app-shell:not(.admin-shell) .brand,.app-shell:not(.admin-shell) .company-switch,.app-shell:not(.admin-shell) .workspace-label,.app-shell:not(.admin-shell) .nav-label,.app-shell:not(.admin-shell) .side-note,.app-shell:not(.admin-shell) .side-home,.app-shell:not(.admin-shell) .sidebar-spacer {
-    display: none
-  }
-
-
-  .app-shell:not(.admin-shell) .nav-list {
-    display: grid;
-    grid-template-columns: repeat(5,minmax(0,1fr));
-    align-items: center;
-    width: 100%;
-    gap: 2px
-  }
-
-
-  .app-shell:not(.admin-shell) .nav-item,.app-shell:not(.admin-shell) .nav-item:not(.active) {
-    display: flex;
-    min-width: 0;
-    height: 54px;
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    padding: 4px 1px;
-    border-radius: 9px;
-    color: #c5d4e5;
-    text-align: center;
-    font-size: 8px
-  }
-
-
-  .app-shell:not(.admin-shell) .nav-item.active {
-    color: #fff;
-    background: #2c4d76
-  }
-
-
-  .app-shell:not(.admin-shell) .nav-item span {
-    display: block;
-    overflow: hidden;
-    max-width: 100%;
-    text-overflow: ellipsis
-  }
-
-
-  .app-shell:not(.admin-shell) .nav-item svg {
-    width: 18px;
-    height: 18px;
-    flex: none
-  }
-
-
-  .app-shell:not(.admin-shell) .main-area {
-    margin-left: 0;
-    padding-bottom: calc(78px + env(safe-area-inset-bottom))
-  }
-
-
-  .app-shell:not(.admin-shell) .topbar {
-    height: auto;
-    min-height: 58px;
-    padding: 8px 10px;
-    gap: 8px
-  }
-
-
-  .app-shell:not(.admin-shell) .global-search {
-    min-width: 0;
-    max-width: none;
-    height: 38px;
-    padding: 0 8px
-  }
-
-
-  .app-shell:not(.admin-shell) .top-actions {
-    gap: 5px
-  }
-
-
-  .app-shell:not(.admin-shell) .content {
-    padding: 18px 12px 28px
-  }
-
-
-  .app-shell:not(.admin-shell) .user-menu {
-    padding: 0
-  }
-
-
-  .app-shell:not(.admin-shell) .logout-button {
-    display: none
-  }
-
-
-  .app-shell:not(.admin-shell) .admin-role-notification-menu {
-    top: auto;
-    right: 0;
-    bottom: calc(78px + env(safe-area-inset-bottom))
-  }
-
-  .app-shell:not(.admin-shell) .nav-item,.app-shell:not(.admin-shell) .nav-item:not(.active) {
-    font-size: 7px
-  }
-
-
-  .app-shell:not(.admin-shell) .topbar {
-    padding-right: 8px;
-    padding-left: 8px
-  }
-
-
-  .app-shell:not(.admin-shell) .global-search {
-    gap: 6px
-  }
-
-
-  .app-shell:not(.admin-shell) .top-actions {
-    gap: 2px
-  }

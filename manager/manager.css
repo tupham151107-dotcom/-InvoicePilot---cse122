@@ -101,7 +101,132 @@
 }
 
 
+@media(max-width:520px) {
+
   .forecast-feature {
     min-height: 300px;
     padding: 20px
   }
+}
+
+
+@media(max-width:600px) {
+
+  .app-shell:not(.admin-shell) .sidebar {
+    position: fixed;
+    inset: auto 0 0;
+    width: 100%;
+    height: calc(70px + env(safe-area-inset-bottom));
+    padding: 6px 5px calc(6px + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    border-top: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 -8px 24px rgba(10,29,52,.16)
+  }
+
+  .app-shell:not(.admin-shell) .brand,.app-shell:not(.admin-shell) .company-switch,.app-shell:not(.admin-shell) .workspace-label,.app-shell:not(.admin-shell) .nav-label,.app-shell:not(.admin-shell) .side-note,.app-shell:not(.admin-shell) .side-home,.app-shell:not(.admin-shell) .sidebar-spacer {
+    display: none
+  }
+
+  .app-shell:not(.admin-shell) .nav-list {
+    display: grid;
+    grid-template-columns: repeat(5,minmax(0,1fr));
+    align-items: center;
+    width: 100%;
+    gap: 2px
+  }
+
+  .app-shell:not(.admin-shell) .nav-item,.app-shell:not(.admin-shell) .nav-item:not(.active) {
+    display: flex;
+    min-width: 0;
+    height: 54px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 4px 1px;
+    border-radius: 9px;
+    color: #c5d4e5;
+    text-align: center;
+    font-size: 8px
+  }
+
+  .app-shell:not(.admin-shell) .nav-item.active {
+    color: #fff;
+    background: #2c4d76
+  }
+
+  .app-shell:not(.admin-shell) .nav-item span {
+    display: block;
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis
+  }
+
+  .app-shell:not(.admin-shell) .nav-item svg {
+    width: 18px;
+    height: 18px;
+    flex: none
+  }
+
+  .app-shell:not(.admin-shell) .main-area {
+    margin-left: 0;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom))
+  }
+
+  .app-shell:not(.admin-shell) .topbar {
+    height: auto;
+    min-height: 58px;
+    padding: 8px 10px;
+    gap: 8px
+  }
+
+  .app-shell:not(.admin-shell) .global-search {
+    min-width: 0;
+    max-width: none;
+    height: 38px;
+    padding: 0 8px
+  }
+
+  .app-shell:not(.admin-shell) .top-actions {
+    gap: 5px
+  }
+
+  .app-shell:not(.admin-shell) .content {
+    padding: 18px 12px 28px
+  }
+
+  .app-shell:not(.admin-shell) .user-menu {
+    padding: 0
+  }
+
+  .app-shell:not(.admin-shell) .logout-button {
+    display: none
+  }
+
+  .app-shell:not(.admin-shell) .admin-role-notification-menu {
+    top: auto;
+    right: 0;
+    bottom: calc(78px + env(safe-area-inset-bottom))
+  }
+}
+
+
+@media(max-width:380px) {
+  .app-shell:not(.admin-shell) .nav-item,.app-shell:not(.admin-shell) .nav-item:not(.active) {
+    font-size: 7px
+  }
+
+  .app-shell:not(.admin-shell) .topbar {
+    padding-right: 8px;
+    padding-left: 8px
+  }
+
+  .app-shell:not(.admin-shell) .global-search {
+    gap: 6px
+  }
+
+  .app-shell:not(.admin-shell) .top-actions {
+    gap: 2px
+  }
+}
