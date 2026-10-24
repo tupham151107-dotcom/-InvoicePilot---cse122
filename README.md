@@ -16,17 +16,21 @@ Prototype quản lý hóa đơn và công nợ bằng HTML, CSS và JavaScript t
 BTL-19_InvoicePilot/
 ├── index.html                    # Điểm vào website
 ├── README.md
-├── common/                       # Đăng nhập, đăng ký và tài nguyên dùng chung
-├── admin-manager/                # Giao diện Quản trị viên và Quản lý
+├── common/                       # Đăng nhập, đăng ký, layout và tài nguyên dùng chung
+│   ├── workspace.js               # Logic và layout dùng chung của hai vai trò
+│   ├── workspace.css              # CSS dùng chung
+│   └── workspace-tools.js         # Xuất báo cáo và xem chi tiết hóa đơn
+├── admin/                        # HTML, CSS và JavaScript của Quản trị viên
+├── manager/                      # HTML, CSS và JavaScript của Quản lý
 ├── accountant/                   # Giao diện Kế toán
 └── sales/                        # Giao diện Kinh doanh
 ```
 
-Mỗi phân hệ có HTML, CSS và JavaScript riêng; các trang vai trò sử dụng tài nguyên chung trong `common/`.
+Quản trị viên mở `admin/index.html`; Quản lý mở `manager/index.html`. Mỗi vai trò có HTML, CSS và JavaScript riêng; đăng nhập, dữ liệu doanh nghiệp, bố cục và tiện ích chung nằm trong `common/`. Các luồng đăng nhập, thanh toán, thông báo và trợ lý AI vẫn dùng chung như trước.
 
 ## Bài giữa kỳ CSE122 · Trang Quản lý khách hàng
 
-**Trang thực hiện:** Quản trị viên → Khách hàng (`admin-manager/index.html?role=admin&email=...`, chọn **Khách hàng** ở thanh điều hướng).
+**Trang thực hiện:** Quản trị viên → Khách hàng (`admin/index.html`, chọn **Khách hàng** ở thanh điều hướng).
 
 **Mục đích:** giúp quản trị viên xem danh sách khách hàng trong doanh nghiệp, tra cứu thông tin liên hệ/mã số thuế, theo dõi trạng thái và công nợ, đồng thời thêm hoặc cập nhật hồ sơ khách hàng. Dữ liệu khách hàng lấy từ vùng dữ liệu dùng chung của doanh nghiệp; thay đổi được gửi qua Supabase để các vai trò được cấp quyền cùng sử dụng.
 
@@ -41,11 +45,11 @@ Mỗi phân hệ có HTML, CSS và JavaScript riêng; các trang vai trò sử d
 
 **Mã nguồn để giải thích:**
 
-- Cấu trúc trang và các vùng semantic nằm trong hàm `adminCustomers()` ở `admin-manager/admin-manager.js`; shell trang cung cấp `header`, `nav` và `main`.
-- Bảng HTML, tìm kiếm/lọc, xuất CSV và sự kiện nằm trong `customerTable()`, `filterCustomers()`, `exportCustomersCsv()` cùng bộ xử lý `data-action` ở `admin-manager/admin-manager.js`.
-- Form thêm/sửa và kiểm tra dữ liệu nằm trong `customerModal()` ở `admin-manager/admin-manager.js`.
-- Màu sắc, thẻ thống kê, bảng, trạng thái hover, focus và responsive nằm trong nhóm quy tắc `.customer-*` ở `admin-manager/admin-manager.css`.
-- Đồng bộ dữ liệu dùng chung được nạp bởi `refreshSharedBusinessData()` qua `IPCommon` trong `admin-manager/admin-manager.js`.
+- Cấu trúc trang và các vùng semantic nằm trong hàm `adminCustomers()` ở `admin/admin.js`; shell trang cung cấp `header`, `nav` và `main`.
+- Bảng HTML, tìm kiếm/lọc, xuất CSV và sự kiện nằm trong `customerTable()`, `filterCustomers()`, `exportCustomersCsv()` ở `admin/admin.js`; sự kiện chung `data-action` nằm ở `common/workspace.js`.
+- Form thêm/sửa và kiểm tra dữ liệu nằm trong `customerModal()` ở `admin/admin.js`.
+- Màu sắc, thẻ thống kê, bảng, trạng thái hover, focus và responsive nằm trong `admin/admin.css` và `common/workspace.css`.
+- Đồng bộ dữ liệu dùng chung được nạp bởi `refreshSharedBusinessData()` qua `IPCommon` trong `common/workspace.js`.
 
 **Công nghệ:** HTML5, CSS3 (Flexbox/Grid/media query), JavaScript thuần, Supabase cho dữ liệu dùng chung.
 
@@ -55,7 +59,7 @@ Mỗi phân hệ có HTML, CSS và JavaScript riêng; các trang vai trò sử d
 - Video trình bày khoảng 3 phút: *chưa có link trong repository*.
 - Repository GitHub: https://github.com/tupham151107-dotcom/-InvoicePilot---cse122
 
-**Gợi ý demo 3 phút:** giới thiệu mục đích trang; chỉ bố cục trên Figma; mở trang ở chế độ Quản trị viên; trình bày `adminCustomers()` và CSS responsive; demo tìm kiếm/lọc, thêm hoặc sửa khách hàng, rồi xuất CSV. Cần dùng tài khoản được cấp quyền và dữ liệu thử phù hợp trước khi quay.
+**Gợi ý demo 3 phút:** giới thiệu mục đích trang; chỉ bố cục trên Figma; mở trang ở chế độ Quản trị viên; trình bày `admin/admin.js` và CSS responsive ở `admin/admin.css`; demo tìm kiếm/lọc, thêm hoặc sửa khách hàng, rồi xuất CSV. Cần dùng tài khoản được cấp quyền và dữ liệu thử phù hợp trước khi quay.
 
 ## Chạy dự án
 

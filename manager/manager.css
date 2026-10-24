@@ -1,0 +1,107 @@
+/* Role-specific rules are separated from the shared InvoicePilot workspace styles. */
+
+
+.aging-list {
+  display: grid;
+  gap: 14px
+}
+
+
+.aging-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 10px;
+  font-size: 9px;
+  color: #6f7f95
+}
+
+
+.aging-item strong {
+  color: #52627a;
+  font-weight: 600
+}
+
+
+.aging-track {
+  grid-column: 1/3;
+  height: 5px;
+  background: #edf1f6;
+  border-radius: 5px;
+  overflow: hidden
+}
+
+
+.aging-fill {
+  height: 100%;
+  border-radius: 5px;
+  background: #2864e8
+}
+
+
+.aging-fill.warn {
+  background: #bd8417
+}
+
+
+.aging-fill.muted {
+  background: #a9b5c5
+}
+
+
+.admin-chart-panel,.forecast-feature {
+  min-height: 365px;
+  border-radius: 16px
+}
+
+
+.forecast-feature {
+  background: linear-gradient(135deg,#15385f,#204d7b);
+  color: #fff;
+  padding: 25px 22px;
+  display: flex;
+  flex-direction: column
+}
+
+
+.forecast-label {
+  font-size: 12px;
+  letter-spacing: .08em;
+  font-weight: 700;
+  color: #b7d5ff
+}
+
+
+.forecast-amount {
+  font: 700 25px Georgia,'Times New Roman',serif;
+  letter-spacing: -.5px;
+  margin: 17px 0 7px
+}
+
+
+.forecast-feature p {
+  font: 11px/1.55 Georgia,'Times New Roman',serif;
+  color: #d1deeb;
+  margin: 0 0 20px
+}
+
+
+.forecast-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  font-size: 10px;
+  color: #d8e5f2
+}
+
+
+.forecast-row strong {
+  color: #fff;
+  font-size: 10px
+}
+
+
+  .forecast-feature {
+    min-height: 300px;
+    padding: 20px
+  }

@@ -1,8 +1,8 @@
 /* Shared browser helpers and the common login/register behavior. */
 (function () {
   const destinations = {
-    admin: '../admin-manager/index.html',
-    manager: '../admin-manager/index.html',
+    admin: '../admin/index.html',
+    manager: '../manager/index.html',
     accountant: '../accountant/index.html',
     sales: '../sales/index.html'
   };
@@ -722,5 +722,3 @@
   });
 
 })();
-
-
