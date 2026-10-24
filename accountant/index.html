@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kế toán · InvoicePilot</title>
-  <link rel="stylesheet" href="../common/common.css" />
-  <link rel="stylesheet" href="accountant.css" />
+  <link rel="stylesheet" href="../common/common.css?v=mobile-layout-1" />
+  <link rel="stylesheet" href="../common/assistant-widget.css?v=1" />
+  <link rel="stylesheet" href="accountant.css?v=mobile-layout-1" />
 </head>
 <body>
   <div id="workspace"></div>
@@ -15,7 +16,12 @@
     <section class="role-panel"><div class="role-panel-heading"><div><h2>Hóa đơn gần đây</h2><p>Quản lý hóa đơn và ghi nhận thanh toán.</p></div><input class="role-search" type="search" placeholder="Tìm mã hóa đơn hoặc khách hàng" data-accountant-search /></div><div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody data-accountant-rows></tbody></table></div></section>
     <div class="role-message" data-accountant-message role="status"></div>
   </template>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../common/supabase-config.js"></script>
   <script src="../common/common.js"></script>
   <script src="accountant.js"></script>
+  <script src="../common/assistant-widget.js?v=1"></script>
+  <script src="https://cdn.botpress.cloud/webchat/v5.0/inject.js"></script>
+  <script src="https://files.bpcontent.cloud/2026/10/21/20/20261021202435-VY6UYVGS.js" defer></script>
 </body>
 </html>
