@@ -486,6 +486,7 @@ IPCommon.requireRole('accountant').then(profile => {
       const error = editForm.querySelector('[data-edit-invoice-error]');
       if (!Number.isSafeInteger(amount) || amount <= 0) { error.textContent = 'Tổng tiền phải là số nguyên lớn hơn 0.'; return; }
       if (!issueDate || !dueDate || dueDate < issueDate) { error.textContent = 'Hạn thanh toán phải từ ngày phát hành trở đi.'; return; }
+      if (!String(data.get('customer') || '').trim() || !String(data.get('description') || '').trim()) { error.textContent = 'Hãy nhập tên khách hàng và mô tả hàng hóa hoặc dịch vụ.'; return; }
       const original = invoices.find(item => String(item.id) === editForm.dataset.invoiceId);
       if (!original) { error.textContent = 'Không tìm thấy hóa đơn. Hãy tải lại trang.'; return; }
       Object.assign(original, { customer: String(data.get('customer') || '').trim(), issued: dateLabel(issueDate), due: dateLabel(dueDate), amount, description: String(data.get('description') || '').trim(), issueDate, dueDate });
@@ -504,10 +505,27 @@ IPCommon.requireRole('accountant').then(profile => {
     if (!error) { error = document.createElement('p'); error.className = 'form-error'; error.dataset.invoiceValidationError = ''; error.setAttribute('role', 'alert'); error.setAttribute('aria-live', 'polite'); createForm.insertBefore(error, createForm.querySelector('.accountant-modal-footer')); }
     if (!Number.isSafeInteger(amount) || amount <= 0) { event.preventDefault(); event.stopImmediatePropagation(); error.textContent = 'Tổng tiền phải là số nguyên lớn hơn 0.'; createForm.querySelector('[name="amount"]')?.focus(); return; }
     if (!issueDate || !dueDate || dueDate < issueDate) { event.preventDefault(); event.stopImmediatePropagation(); error.textContent = 'Hạn thanh toán phải từ ngày phát hành trở đi.'; createForm.querySelector('[name="due"]')?.focus(); return; }
+    if (!String(data.get('customer') || '').trim() || !String(data.get('description') || '').trim()) { event.preventDefault(); event.stopImmediatePropagation(); error.textContent = 'Hãy nhập tên khách hàng và mô tả hàng hóa hoặc dịch vụ.'; return; }
     error.textContent = '';
   }, true);
 
 
+
+  const originalShowCreateInvoiceForm = showCreateInvoiceForm;
+  showCreateInvoiceForm = () => {
+    originalShowCreateInvoiceForm();
+    const form = workspace.querySelector('[data-create-invoice-form]');
+    const select = form?.querySelector('[name="customer"]');
+    if (!form || !select) return;
+    const input = document.createElement('input');
+    input.name = 'customer'; input.type = 'text'; input.maxLength = 160; input.required = true;
+    input.placeholder = 'Nhập hoặc chọn khách hàng'; input.setAttribute('list', 'accountant-customer-options');
+    input.value = select.value || '';
+    const suggestions = document.createElement('datalist');
+    suggestions.id = 'accountant-customer-options';
+    suggestions.innerHTML = customers.map(customer => '<option value="' + safe(customer.name) + '"></option>').join('');
+    select.replaceWith(input); form.append(suggestions); input.focus();
+  };
 
   document.addEventListener('keydown', event => { if (event.key === 'Escape') workspace.querySelector('[data-edit-invoice-modal]')?.remove(); }, true);
   render();
