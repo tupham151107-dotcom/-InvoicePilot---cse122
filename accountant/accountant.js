@@ -1,9 +1,23 @@
-IPCommon.requireRole('accountant').then(async profile => {
-  if (!profile) return;
+function showAccountantStartupError(message) {
+  const workspace = document.getElementById('workspace');
+  if (!workspace) return;
+  const notice = document.createElement('p');
+  notice.className = 'accountant-startup-error';
+  notice.setAttribute('role', 'alert');
+  notice.textContent = message;
+  workspace.replaceChildren(notice);
+}
+
+if (!window.IPCommon?.requireRole) {
+  showAccountantStartupError('Không tải được thành phần dùng chung. Hãy tải lại trang hoặc kiểm tra đường dẫn tài nguyên.');
+} else {
+window.IPCommon.requireRole('accountant').then(async profile => {
+  if (!profile) { showAccountantStartupError('Đang chuyển tới trang đăng nhập…'); return; }
   const settingsStorageKey = IPCommon.accountStorageKey('invoicepilot-accountant-settings');
   let invoices = [];
   let customers = [];
   const payments = [];
+  let paymentLedgerReady = true;
   const nav = [
     { id: 'overview', label: 'Tổng quan', href: '#overview', icon: '▦' },
     { id: 'invoices', label: 'Hóa đơn', href: '#invoices', icon: '▤' },
@@ -21,15 +35,18 @@ IPCommon.requireRole('accountant').then(async profile => {
   const workspace = document.getElementById('workspace');
 
   function invoiceTable(items) {
-    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Đã thu</th><th>Còn lại</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.id)}</strong></td><td>${safe(row.customer)}</td><td>${row.due}</td><td><strong>${format(row.amount)}</strong></td><td>${format(row.amountPaid)}</td><td>${format(row.balance)}</td><td><span class="role-badge ${row.status === 'Quá hạn' ? 'pending' : ''}">${row.status}</span></td><td><button type="button" data-invoice-id="${safe(row.id)}">Chi tiết</button>${row.balance > 0 ? ` <button type="button" data-record-payment="${safe(row.dbId)}">Xác nhận thanh toán</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+    if (!items.length) return '<p class="accountant-empty-state">Chưa có hóa đơn trong dữ liệu doanh nghiệp.</p>';
+    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Đã thu</th><th>Còn lại</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.id)}</strong></td><td>${safe(row.customer)}</td><td>${safe(row.due)}</td><td><strong>${format(row.amount)}</strong></td><td>${format(row.amountPaid)}</td><td>${format(row.balance)}</td><td><span class="role-badge ${row.status === 'Quá hạn' ? 'pending' : ''}">${safe(row.status)}</span></td><td><button type="button" data-invoice-id="${safe(row.id)}">Chi tiết</button>${row.balance > 0 ? paymentLedgerReady ? ` <button type="button" data-record-payment="${safe(row.dbId)}">Xác nhận thanh toán</button>` : ' <span class="accountant-inline-note">Chưa bật sổ thanh toán</span>' : ''}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function paymentTable(items) {
-    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã giao dịch</th><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày nhận</th><th>Số tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${row.id}</strong></td><td>${row.invoice}</td><td>${row.customer}</td><td>${row.date}</td><td><strong>${format(row.amount)}</strong></td><td><span class="role-badge ${row.status === 'Chờ đối soát' ? 'pending' : ''}">${row.status}</span></td><td>${row.status === 'Chờ đối soát' ? `<button type="button" data-reconcile="${row.dbId}">Đối soát</button>` : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+    if (!items.length) return '<p class="accountant-empty-state">Chưa có giao dịch thanh toán trong dữ liệu gần nhất.</p>';
+    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã giao dịch</th><th>Mã hóa đơn</th><th>Khách hàng</th><th>Ngày nhận</th><th>Số tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.id)}</strong></td><td>${safe(row.invoice)}</td><td>${safe(row.customer)}</td><td>${safe(row.date)}</td><td><strong>${format(row.amount)}</strong></td><td><span class="role-badge ${row.status === 'Chờ đối soát' ? 'pending' : ''}">${safe(row.status)}</span></td><td>${row.status === 'Chờ đối soát' ? paymentLedgerReady ? `<button type="button" data-reconcile="${safe(row.dbId)}">Đối soát</button>` : '<span class="accountant-inline-note">Chưa bật sổ thanh toán</span>' : '—'}</td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function customerTable(items) {
-    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Khách hàng</th><th>Người liên hệ</th><th>Email</th><th>Số hóa đơn</th><th>Công nợ</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${row.name}</strong></td><td>${row.contact}</td><td>${row.email}</td><td>${row.invoices}</td><td><strong>${format(row.debt)}</strong></td><td><button type="button" data-customer="${safe(row.name)}">Chi tiết</button></td></tr>`).join('')}</tbody></table></div>`;
+    if (!items.length) return '<p class="accountant-empty-state">Chưa có khách hàng trong dữ liệu doanh nghiệp.</p>';
+    return `<div class="table-scroll"><table class="role-table"><thead><tr><th>Khách hàng</th><th>Người liên hệ</th><th>Email</th><th>Số hóa đơn</th><th>Công nợ</th><th></th></tr></thead><tbody>${items.map(row => `<tr><td><strong>${safe(row.name)}</strong></td><td>${safe(row.contact)}</td><td>${safe(row.email)}</td><td>${row.invoices}</td><td><strong>${format(row.debt)}</strong></td><td><button type="button" data-customer="${safe(row.name)}">Chi tiết</button></td></tr>`).join('')}</tbody></table></div>`;
   }
 
   function showCompanyProfile(companyName, focusInvoiceId = '') {
@@ -37,14 +54,14 @@ IPCommon.requireRole('accountant').then(async profile => {
     const company = customers.find(item => item.name === companyName);
     if (!company) return;
     const companyInvoices = invoices.filter(item => item.customer === company.name);
-    const invoiceRows = companyInvoices.map(item => `<tr class="${item.id === focusInvoiceId ? 'is-focused' : ''}"><td><strong>${item.id}</strong>${item.id === focusInvoiceId ? '<small class="detail-focus-tag">Hóa đơn đang xem</small>' : ''}</td><td>${item.due}</td><td><strong>${format(item.amount)}</strong></td><td><span class="role-badge ${item.status === 'Quá hạn' ? 'pending' : ''}">${item.status}</span></td><td><button type="button" data-modal-invoice="${item.id}">Xem hóa đơn</button></td></tr>`).join('');
+    const invoiceRows = companyInvoices.map(item => `<tr class="${item.id === focusInvoiceId ? 'is-focused' : ''}"><td><strong>${safe(item.id)}</strong>${item.id === focusInvoiceId ? '<small class="detail-focus-tag">Hóa đơn đang xem</small>' : ''}</td><td>${safe(item.due)}</td><td><strong>${format(item.amount)}</strong></td><td><span class="role-badge ${item.status === 'Quá hạn' ? 'pending' : ''}">${safe(item.status)}</span></td><td><button type="button" data-modal-invoice="${safe(item.id)}">Xem hóa đơn</button></td></tr>`).join('');
     const modal = document.createElement('div');
     modal.className = 'accountant-modal-backdrop';
     modal.dataset.companyProfileModal = '';
     modal.innerHTML = `<section class="accountant-modal" role="dialog" aria-modal="true" aria-labelledby="company-profile-title">
       <header class="accountant-modal-header"><div><span class="eyebrow">HỒ SƠ KHÁCH HÀNG</span><h2 id="company-profile-title">${safe(company.name)}</h2></div><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></header>
-      <div class="company-profile-grid"><div class="company-profile-info"><h3>Thông tin công ty</h3><dl><div><dt>Mã số thuế</dt><dd>${company.tax}</dd></div><div><dt>Người liên hệ</dt><dd>${safe(company.contact)}</dd></div><div><dt>Email</dt><dd>${safe(company.email)}</dd></div><div><dt>Số điện thoại</dt><dd>${company.phone}</dd></div></dl></div><div class="company-profile-balance"><small>CÔNG NỢ HIỆN TẠI</small><strong>${format(company.debt)}</strong><span>${company.invoices} hóa đơn trong hồ sơ</span></div></div>
-      <div class="accountant-modal-invoices"><div class="role-panel-heading"><div><h3>Hóa đơn của công ty</h3><p>${companyInvoices.length} hóa đơn đang có trong dữ liệu mẫu.</p></div></div>${companyInvoices.length ? `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${invoiceRows}</tbody></table></div>` : '<p class="company-empty">Công ty chưa có hóa đơn trong dữ liệu tài khoản.</p>'}</div>
+      <div class="company-profile-grid"><div class="company-profile-info"><h3>Thông tin công ty</h3><dl><div><dt>Mã số thuế</dt><dd>${safe(company.tax || '—')}</dd></div><div><dt>Người liên hệ</dt><dd>${safe(company.contact || '—')}</dd></div><div><dt>Email</dt><dd>${safe(company.email || '—')}</dd></div><div><dt>Số điện thoại</dt><dd>${safe(company.phone || '—')}</dd></div></dl></div><div class="company-profile-balance"><small>CÔNG NỢ HIỆN TẠI</small><strong>${format(company.debt)}</strong><span>${company.invoices} hóa đơn trong hồ sơ</span></div></div>
+      <div class="accountant-modal-invoices"><div class="role-panel-heading"><div><h3>Hóa đơn của công ty</h3><p>${companyInvoices.length} hóa đơn trong dữ liệu doanh nghiệp.</p></div></div>${companyInvoices.length ? `<div class="table-scroll"><table class="role-table"><thead><tr><th>Mã hóa đơn</th><th>Ngày đến hạn</th><th>Tổng tiền</th><th>Trạng thái</th><th></th></tr></thead><tbody>${invoiceRows}</tbody></table></div>` : '<p class="company-empty">Công ty chưa có hóa đơn trong dữ liệu doanh nghiệp.</p>'}</div>
       <footer class="accountant-modal-footer"><button class="button button-primary" type="button" data-close-accountant-modal>Đóng hồ sơ</button></footer>
     </section>`;
     workspace.append(modal);
@@ -56,19 +73,19 @@ IPCommon.requireRole('accountant').then(async profile => {
     const invoice = invoices.find(item => item.id === invoiceId);
     if (!invoice) return;
     const company = customers.find(item => item.name === invoice.customer);
-    const subtotal = Math.round(invoice.amount / 1.1);
-    const tax = invoice.amount - subtotal;
     const balance = invoice.balance;
+    const sellerName = profile.company_name || 'Doanh nghiệp của bạn';
+    const sellerTaxCode = profile.tax_code ? `<p>Mã số thuế: ${safe(profile.tax_code)}</p>` : '';
     const modal = document.createElement('div');
     modal.className = 'accountant-modal-backdrop invoice-preview-backdrop';
     modal.dataset.companyProfileModal = '';
     modal.innerHTML = `<section class="accountant-modal invoice-preview-modal" role="dialog" aria-modal="true" aria-labelledby="invoice-preview-title">
-      <header class="accountant-modal-header invoice-modal-toolbar"><div><span class="eyebrow">CHI TIẾT HÓA ĐƠN</span><h2 id="invoice-preview-title">${invoice.id}</h2></div><div class="invoice-toolbar-actions"><button class="button" type="button" data-invoice-history="${safe(invoice.dbId)}">Lịch sử</button><button class="button" type="button" data-print-invoice>In / lưu PDF</button><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></div></header>
+      <header class="accountant-modal-header invoice-modal-toolbar"><div><span class="eyebrow">CHI TIẾT HÓA ĐƠN</span><h2 id="invoice-preview-title">${safe(invoice.id)}</h2></div><div class="invoice-toolbar-actions"><button class="button" type="button" data-invoice-history="${safe(invoice.dbId)}">Lịch sử</button><button class="button" type="button" data-print-invoice>In / lưu PDF</button><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></div></header>
       <article class="invoice-paper">
-        <div class="invoice-paper-top"><div><span class="invoice-brand-mark">IP</span><h3>CÔNG TY TNHH ÁNH DƯƠNG</h3><p>Mã số thuế: 0312456789<br />Email: ketoan@anhduong.example.vn</p></div><div class="invoice-title-block"><h1>HÓA ĐƠN</h1><span class="role-badge ${invoice.status === 'Quá hạn' ? 'pending' : ''}">${invoice.status}</span></div></div>
-        <div class="invoice-meta-grid"><div><small>KHÁCH HÀNG</small><strong>${safe(invoice.customer)}</strong><span>${safe(company?.contact || '')}</span><span>${safe(company?.email || '')}</span><span>MST: ${company?.tax || '—'}</span></div><div><small>THÔNG TIN HÓA ĐƠN</small><strong>${invoice.id}</strong><span>Ngày phát hành: ${invoice.issued}</span><span>Hạn thanh toán: ${invoice.due}</span><span>Loại tiền: VND</span></div></div>
-        <div class="invoice-items-wrap"><table class="invoice-items"><thead><tr><th>#</th><th>Hạng mục / mô tả</th><th>SL</th><th>Đơn giá</th><th>Thuế</th><th>Thành tiền</th></tr></thead><tbody><tr><td>1</td><td><strong>Dịch vụ theo hợp đồng</strong><small>Dịch vụ cung cấp trong kỳ tháng 09/2026</small></td><td>1</td><td>${format(subtotal)}</td><td>10%</td><td><strong>${format(invoice.amount)}</strong></td></tr></tbody></table></div>
-        <div class="invoice-summary"><div class="invoice-note"><strong>Ghi chú thanh toán</strong><p>Vui lòng ghi mã hóa đơn ${invoice.id} trong nội dung chuyển khoản.</p><p>${safe(profile.company_name || 'Doanh nghiệp của bạn')}</p></div><div class="invoice-totals"><div><span>Tạm tính</span><strong>${format(subtotal)}</strong></div><div><span>Thuế GTGT (10%)</span><strong>${format(tax)}</strong></div><div class="invoice-grand-total"><span>Tổng cộng</span><strong>${format(invoice.amount)}</strong></div><div><span>Đã thanh toán</span><strong>${format(invoice.amountPaid)}</strong></div><div class="invoice-balance"><span>Còn phải thu</span><strong>${format(balance)}</strong></div></div></div>
+        <div class="invoice-paper-top"><div><span class="invoice-brand-mark">IP</span><h3>${safe(sellerName)}</h3>${sellerTaxCode}</div><div class="invoice-title-block"><h1>HÓA ĐƠN</h1><span class="role-badge ${invoice.status === 'Quá hạn' ? 'pending' : ''}">${safe(invoice.status)}</span></div></div>
+        <div class="invoice-meta-grid"><div><small>KHÁCH HÀNG</small><strong>${safe(invoice.customer)}</strong><span>${safe(company?.contact || '')}</span><span>${safe(company?.email || '')}</span><span>MST: ${safe(company?.tax || '—')}</span></div><div><small>THÔNG TIN HÓA ĐƠN</small><strong>${safe(invoice.id)}</strong><span>Ngày phát hành: ${safe(invoice.issued)}</span><span>Hạn thanh toán: ${safe(invoice.due)}</span><span>Loại tiền: VND</span></div></div>
+        <div class="invoice-items-wrap"><table class="invoice-items"><thead><tr><th>#</th><th>Hạng mục / mô tả</th><th>Thành tiền</th></tr></thead><tbody><tr><td>1</td><td><strong>${safe(invoice.description || 'Hàng hóa / dịch vụ')}</strong></td><td><strong>${format(invoice.amount)}</strong></td></tr></tbody></table></div>
+        <div class="invoice-summary"><div class="invoice-note"><strong>Ghi chú thanh toán</strong><p>Vui lòng ghi mã hóa đơn ${safe(invoice.id)} trong nội dung chuyển khoản.</p><p>${safe(sellerName)}</p></div><div class="invoice-totals"><div class="invoice-grand-total"><span>Tổng tiền hóa đơn</span><strong>${format(invoice.amount)}</strong></div><div><span>Đã thanh toán</span><strong>${format(invoice.amountPaid)}</strong></div><div class="invoice-balance"><span>Còn phải thu</span><strong>${format(balance)}</strong></div></div></div>
         <footer class="invoice-paper-footer">InvoicePilot · Cảm ơn Quý khách đã sử dụng dịch vụ.</footer>
       </article>
       <footer class="accountant-modal-footer invoice-modal-toolbar"><button class="button" type="button" data-close-accountant-modal>Đóng</button><button class="button button-primary" type="button" data-print-invoice>In / lưu PDF</button></footer>
@@ -87,7 +104,7 @@ IPCommon.requireRole('accountant').then(async profile => {
     const due = new Date(today);
     due.setDate(due.getDate() + 30);
     const dueISO = new Date(due.getTime() - due.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    modal.innerHTML = `<section class="accountant-modal invoice-create-modal" role="dialog" aria-modal="true" aria-labelledby="create-invoice-title"><header class="accountant-modal-header"><div><span class="eyebrow">KẾ TOÁN</span><h2 id="create-invoice-title">Tạo hóa đơn</h2></div><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></header><form class="invoice-create-form" data-create-invoice-form><label>Khách hàng<select name="customer" required>${customers.map(customer => `<option value="${safe(customer.id)}">${safe(customer.name)}</option>`).join('')}</select></label><div class="invoice-create-fields"><label>Ngày phát hành<input name="issued" type="date" value="${todayISO}" required></label><label>Hạn thanh toán<input name="due" type="date" value="${dueISO}" required></label></div><label>Mô tả hàng hóa / dịch vụ<input name="description" type="text" placeholder="Ví dụ: Dịch vụ theo hợp đồng" required></label><label>Tổng tiền (₫)<input name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 12.000.000" required></label><footer class="accountant-modal-footer"><button class="button" type="button" data-close-accountant-modal>Hủy</button><button class="button button-primary" type="submit">Tạo hóa đơn</button></footer></form></section>`;
+    modal.innerHTML = `<section class="accountant-modal invoice-create-modal" role="dialog" aria-modal="true" aria-labelledby="create-invoice-title"><header class="accountant-modal-header"><div><span class="eyebrow">KẾ TOÁN</span><h2 id="create-invoice-title">Tạo hóa đơn</h2></div><button class="accountant-modal-close" type="button" aria-label="Đóng" data-close-accountant-modal>×</button></header><form class="invoice-create-form" data-create-invoice-form><label>Khách hàng<select name="customer" required ${customers.length ? '' : 'disabled'}><option value="" disabled selected>Chọn khách hàng</option>${customers.map(customer => `<option value="${safe(customer.id)}">${safe(customer.name)}</option>`).join('')}</select></label>${customers.length ? '' : '<p class="accountant-inline-note" role="status">Chưa có khách hàng. Hãy thêm khách hàng trước khi lập hóa đơn.</p>'}<div class="invoice-create-fields"><label>Ngày phát hành<input name="issued" type="date" value="${todayISO}" required></label><label>Hạn thanh toán<input name="due" type="date" value="${dueISO}" required></label></div><label>Mô tả hàng hóa / dịch vụ<input name="description" type="text" maxlength="240" placeholder="Ví dụ: Dịch vụ theo hợp đồng" required></label><label>Tổng tiền (₫)<input name="amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Ví dụ: 12.000.000" required></label><footer class="accountant-modal-footer"><button class="button" type="button" data-close-accountant-modal>Hủy</button><button class="button button-primary" type="submit" ${customers.length ? '' : 'disabled'}>Tạo hóa đơn</button></footer></form></section>`;
     workspace.append(modal);
     modal.querySelector('[name="customer"]')?.focus();
   }
@@ -112,15 +129,16 @@ IPCommon.requireRole('accountant').then(async profile => {
 
   function pageMarkup(section) {
     if (section === 'overview') return `
-      <section class="role-heading"><div><span class="eyebrow">KẾ TOÁN</span><h1>Tổng quan kế toán</h1><p>Tình hình hóa đơn, thanh toán và công nợ trong tháng.</p></div><button class="button button-primary accountant-action" data-accountant-action="new-invoice">+ Tạo hóa đơn</button></section>
-      <section class="role-stats"><article class="role-card"><small>Hóa đơn cần xử lý</small><strong>${invoices.length}</strong><span>${invoices.filter(item => item.status === 'Quá hạn').length} hóa đơn quá hạn</span></article><article class="role-card"><small>Khoản đã thu tháng này</small><strong>${format(payments.reduce((sum, item) => sum + item.amount, 0))}</strong><span class="positive">Tổng khoản đã ghi nhận</span></article><article class="role-card"><small>Chờ đối soát</small><strong>${payments.filter(item => item.status === 'Chờ đối soát').length}</strong><span>${format(payments.filter(item => item.status === 'Chờ đối soát').reduce((sum, item) => sum + item.amount, 0))}</span></article></section>
+      <section class="role-heading"><div><span class="eyebrow">KẾ TOÁN</span><h1>Tổng quan kế toán</h1><p>Theo dõi hóa đơn, khoản thu và công nợ trong dữ liệu doanh nghiệp.</p></div><button class="button button-primary accountant-action" data-accountant-action="new-invoice">+ Tạo hóa đơn</button></section>
+      <section class="role-stats"><article class="role-card"><small>Hóa đơn chưa thu đủ</small><strong>${invoices.filter(item => item.balance > 0).length}</strong><span>${invoices.filter(item => item.status === 'Quá hạn').length} hóa đơn quá hạn</span></article><article class="role-card"><small>Tổng tiền đã nhận</small><strong>${format(payments.reduce((sum, item) => sum + item.amount, 0))}</strong><span class="positive">Trong tối đa 100 giao dịch gần nhất</span></article><article class="role-card"><small>Chờ đối soát</small><strong>${payments.filter(item => item.status === 'Chờ đối soát').length}</strong><span>${format(payments.filter(item => item.status === 'Chờ đối soát').reduce((sum, item) => sum + item.amount, 0))}</span></article></section>
       <section class="role-panel"><div class="role-panel-heading"><div><h2>Hóa đơn gần đây</h2><p>Chọn một hóa đơn để xem thông tin.</p></div><a class="role-inline-link" href="#invoices" data-section="invoices">Tất cả hóa đơn →</a></div>${invoiceTable(invoices.slice(0, 3))}</section><div class="role-message" data-accountant-message role="status"></div>`;
     if (section === 'invoices') return `
       <section class="role-heading"><div><span class="eyebrow">KẾ TOÁN</span><h1>Quản lý hóa đơn</h1><p>Theo dõi hạn thanh toán và trạng thái các hóa đơn.</p></div><button class="button button-primary accountant-action" data-accountant-action="new-invoice">+ Tạo hóa đơn</button></section>
       <section class="role-panel"><div class="role-panel-heading"><div><h2>Danh sách hóa đơn</h2><p>${invoices.length} hóa đơn trong dữ liệu tài khoản.</p></div><input class="role-search" type="search" placeholder="Tìm mã hóa đơn hoặc khách hàng" data-search="invoice" /></div><div data-invoice-list>${invoiceTable(invoices)}</div></section><div class="role-message" data-accountant-message role="status"></div>`;
     if (section === 'payments') return `
       <section class="role-heading"><div><span class="eyebrow">KẾ TOÁN</span><h1>Thanh toán &amp; đối soát</h1><p>Kiểm tra khoản tiền nhận được và đối chiếu với hóa đơn.</p></div></section>
-      <section class="role-stats"><article class="role-card"><small>Giao dịch tháng này</small><strong>${payments.length}</strong><span>Ghi nhận trong tháng 10</span></article><article class="role-card"><small>Tổng tiền nhận</small><strong>${format(payments.reduce((sum, item) => sum + item.amount, 0))}</strong><span>Trong dữ liệu tài khoản</span></article><article class="role-card"><small>Chờ đối soát</small><strong>${payments.filter(item => item.status === 'Chờ đối soát').length}</strong><span>Cần kiểm tra chứng từ</span></article></section>
+      <section class="role-stats"><article class="role-card"><small>Giao dịch đã tải</small><strong>${payments.length}</strong><span>Tối đa 100 giao dịch gần nhất</span></article><article class="role-card"><small>Tổng tiền đã nhận</small><strong>${format(payments.reduce((sum, item) => sum + item.amount, 0))}</strong><span>Trong dữ liệu đã tải</span></article><article class="role-card"><small>Chờ đối soát</small><strong>${payments.filter(item => item.status === 'Chờ đối soát').length}</strong><span>Cần kiểm tra chứng từ</span></article></section>
+      ${paymentLedgerReady ? '' : '<p class="accountant-warning" role="status">Sổ thanh toán chưa được bật trong Supabase. Chạy migration thanh toán để ghi nhận và đối soát giao dịch.</p>'}
       <section class="role-panel"><div class="role-panel-heading"><div><h2>Danh sách thanh toán</h2><p>Đối soát các giao dịch đang chờ xác nhận.</p></div><input class="role-search" type="search" placeholder="Tìm giao dịch hoặc khách hàng" data-search="payment" /></div><div data-payment-list>${paymentTable(payments)}</div></section><div class="role-message" data-accountant-message role="status"></div>`;
     if (section === 'settings') return `
       <section class="role-heading"><div><span class="eyebrow">TÙY CHỈNH</span><h1>Cài đặt</h1><p>Quản lý tùy chọn sử dụng tài khoản Kế toán.</p></div></section>
@@ -257,7 +275,8 @@ IPCommon.requireRole('accountant').then(async profile => {
     const data = await IPCommon.getCompanyBusinessData();
     customers = data.customers;
     invoices = data.invoices;
-    payments.splice(0, payments.length, ...(data.payments || []).map(item => ({ id: `PAY-${item.id.slice(0, 8)}`, dbId: item.id, invoice: item.invoice, customer: item.customer, date: new Intl.DateTimeFormat('vi-VN').format(new Date(item.paidAt)), amount: item.amount, status: item.reconciledAt ? 'Đã đối soát' : 'Chờ đối soát' })));
+    paymentLedgerReady = data.paymentLedgerReady !== false;
+    payments.splice(0, payments.length, ...(data.payments || []).map(item => ({ id: `PAY-${String(item.id || '').slice(0, 8)}`, dbId: item.id, invoice: item.invoice, customer: item.customer, date: item.paidAt && !Number.isNaN(new Date(item.paidAt).getTime()) ? new Intl.DateTimeFormat('vi-VN').format(new Date(item.paidAt)) : '—', amount: Number(item.amount) || 0, status: item.reconciledAt ? 'Đã đối soát' : 'Chờ đối soát' })));
     render(location.hash.slice(1) || 'overview');
   }
 
@@ -271,7 +290,7 @@ IPCommon.requireRole('accountant').then(async profile => {
       const errorBox = paymentForm.querySelector('[data-payment-error]');
       const submit = paymentForm.querySelector('[type="submit"]');
       if (!invoice) { errorBox.textContent = 'Không tìm thấy hóa đơn. Hãy tải lại trang.'; return; }
-      if (!amount || amount > invoice.balance) { errorBox.textContent = 'Số tiền không hợp lệ hoặc vượt quá số dư còn phải thu.'; return; }
+      if (!Number.isSafeInteger(amount) || amount <= 0 || amount > invoice.balance) { errorBox.textContent = 'Số tiền phải lớn hơn 0 và không vượt quá số dư còn phải thu.'; return; }
       submit.disabled = true;
       submit.textContent = 'Đang lưu xác nhận…';
       errorBox.textContent = '';
@@ -293,23 +312,36 @@ IPCommon.requireRole('accountant').then(async profile => {
     if (!form) return;
     event.preventDefault();
     const data = new FormData(form);
-    const amount = Number(String(data.get('amount')).replace(/\D/g, ''));
-    const maxNumber = invoices.reduce((max, item) => Math.max(max, Number(item.id.match(/(\d+)$/)?.[1] || 0)), 0);
+    const amount = Number(String(data.get('amount') || '').replace(/\D/g, ''));
+    const issueDate = String(data.get('issued') || '');
+    const dueDate = String(data.get('due') || '');
+    const customerId = String(data.get('customer') || '');
+    const customer = customers.find(item => item.id === customerId);
+    const description = String(data.get('description') || '').trim();
+    let errorBox = form.querySelector('[data-invoice-error]');
+    if (!errorBox) { errorBox = document.createElement('p'); errorBox.dataset.invoiceError = ''; errorBox.className = 'role-message'; errorBox.setAttribute('role', 'alert'); form.append(errorBox); }
+    if (!Number.isSafeInteger(amount) || amount <= 0) { errorBox.textContent = 'Tổng tiền phải là số nguyên lớn hơn 0.'; return; }
+    if (!issueDate || !dueDate || dueDate < issueDate) { errorBox.textContent = 'Hạn thanh toán phải từ ngày phát hành trở đi.'; return; }
+    if (!customer) { errorBox.textContent = 'Không tìm thấy khách hàng. Hãy tải lại danh sách trước khi tạo hóa đơn.'; return; }
+    if (!description) { errorBox.textContent = 'Hãy nhập mô tả hàng hóa hoặc dịch vụ.'; return; }
+    errorBox.textContent = '';
+    const maxNumber = invoices.reduce((max, item) => Math.max(max, Number(String(item.id || '').match(/^IP-\d{4}-(\d+)(?:-|$)/i)?.[1] || 0)), 0);
+    const randomSuffix = window.crypto?.randomUUID ? window.crypto.randomUUID().slice(0, 8).toUpperCase() : Math.random().toString(36).slice(2, 10).toUpperCase();
     const invoice = {
-      id: `IP-${new Date().getFullYear()}-${String(maxNumber + 1).padStart(3, '0')}`,
-      customerId: String(data.get('customer')),
-      customer: customers.find(item => item.id === String(data.get('customer')))?.name || '',
-      issued: dateLabel(String(data.get('issued'))),
-      due: dateLabel(String(data.get('due'))),
+      id: `IP-${new Date().getFullYear()}-${String(maxNumber + 1).padStart(3, '0')}-${randomSuffix}`,
+      customerId,
+      customer: customer.name,
+      issued: dateLabel(issueDate),
+      due: dateLabel(dueDate),
       amount,
-      description: String(data.get('description')).trim(),
+      description,
       status: 'Chưa thanh toán'
     };
     const submit = form.querySelector('[type="submit"]');
     submit.disabled = true;
     submit.textContent = 'Đang lưu…';
     try {
-      await IPCommon.createCompanyInvoice({ ...invoice, issueDate: String(data.get('issued')), dueDate: String(data.get('due')) });
+      await IPCommon.createCompanyInvoice({ ...invoice, issueDate, dueDate });
       await refreshSharedBusinessData();
       workspace.querySelector('[data-create-invoice-modal]')?.remove();
       const message = workspace.querySelector('[data-accountant-message]');
@@ -345,5 +377,9 @@ IPCommon.requireRole('accountant').then(async profile => {
     content.innerHTML = `<section class="role-panel"><div class="empty-state">Không tải được dữ liệu chung của doanh nghiệp: ${safe(error.message || 'Hãy kiểm tra cấu hình Supabase.')}</div></section>`;
     IPCommon.mountShell({ role: 'accountant', active: 'Hóa đơn', nav, searchItems: [] });
   }
+}).catch(error => {
+  console.error('Không khởi tạo được khu vực kế toán:', error);
+  showAccountantStartupError('Không mở được khu vực kế toán. Hãy tải lại trang hoặc đăng nhập lại.');
 });
+}
 
