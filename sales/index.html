@@ -1,23 +1,24 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kinh doanh · InvoicePilot</title>
-  <link rel="stylesheet" href="../common/common.css" />
-  <link rel="stylesheet" href="sales.css" />
-  <link rel="stylesheet" href="sales-modals.css" />
+  <link rel="stylesheet" href="../common/common.css?v=invoice-events-1">
+  <link rel="stylesheet" href="sales.css?v=sales-complete-1">
+  <link rel="stylesheet" href="sales-modals.css?v=sales-complete-1">
 </head>
-<body>
-  <div id="workspace"></div>
-  <template id="role-content">
-    <section class="role-heading"><div><span class="eyebrow">KINH DOANH</span><h1>Khách hàng &amp; khoản thu</h1><p>Theo dõi khách hàng phụ trách và phối hợp nhắc thanh toán.</p></div><button class="button button-primary sales-action" data-sales-action="add-customer">+ Thêm khách hàng</button></section>
-    <section class="role-stats"><article class="role-card"><small>Khách hàng phụ trách</small><strong>12</strong><span>3 khách hàng mới tháng này</span></article><article class="role-card"><small>Đang có công nợ</small><strong>5</strong><span>71.500.000 ₫ cần theo dõi</span></article><article class="role-card"><small>Đã thu tháng này</small><strong>27.500.000 ₫</strong><span class="positive">3 khoản đã xác nhận</span></article></section>
-    <section class="role-panel"><div class="role-panel-heading"><div><h2>Khách hàng của tôi</h2><p>Thông tin liên hệ và trạng thái khoản thu.</p></div><input class="role-search" type="search" placeholder="Tìm tên khách hàng..." data-sales-search /></div><div class="table-scroll"><table class="role-table"><thead><tr><th>Khách hàng</th><th>Người liên hệ</th><th>Công nợ</th><th>Hạn gần nhất</th><th>Trạng thái</th><th></th></tr></thead><tbody data-sales-rows></tbody></table></div></section>
-    <div class="role-message" data-sales-message role="status"></div>
-  </template>
-  <script src="../common/common.js"></script>
-  <script src="sales-modals.js"></script>
-  <script src="sales.js"></script>
+<body data-sales-workspace="true">
+  <div id="workspace"><main class="sales-standalone"><h1>Đang mở khu vực Kinh doanh</h1><p role="status">Đang kiểm tra phiên đăng nhập…</p><p>Nếu trang không tải, hãy kiểm tra mạng và tải lại.</p><a href="../common/index.html">Về đăng nhập</a></main></div>
+  <template id="role-content"></template>
+  <noscript><p>Bật JavaScript để đăng nhập và sử dụng khu vực Kinh doanh.</p></noscript>
+  <script src="vendor/supabase-2.110.8.js"></script>
+  <script src="../common/supabase-config.js"></script>
+  <script src="../common/common.js?v=invoice-events-1"></script>
+  <script src="sales-modals.js?v=sales-complete-1"></script>
+  <script src="sales.js?v=sales-complete-1"></script>
+  <script src="../common/assistant-widget.js?v=2"></script>
+  <script src="https://cdn.botpress.cloud/webchat/v5.0/inject.js" defer></script>
+  <script src="https://files.bpcontent.cloud/2026/10/21/20/20261021202435-VY6UYVGS.js" defer></script>
 </body>
 </html>
