@@ -3,11 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="refresh" content="0; url=./common/home.html" />
-  <title>InvoicePilot</title>
+  <meta name="theme-color" content="#102d52" />
+  <title>Quản trị viên · InvoicePilot</title>
+  <link rel="stylesheet" href="../common/common.css?v=member-invites-1" />
+  <link rel="stylesheet" href="../common/assistant-widget.css?v=1" />
+  <link rel="stylesheet" href="../common/workspace.css" />
+  <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
-  <p>Đang mở InvoicePilot… <a href="./common/home.html">Đi tới trang giới thiệu</a></p>
-  <script>window.location.replace('./common/home.html');</script>
+  <div id="app"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="modal-root"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../common/supabase-config.js"></script>
+  <script src="../common/common.js?v=member-invites-1"></script>
+  <script src="../common/workspace-tools.js"></script>
+  <script src="admin.js"></script>
+  <script src="../common/workspace.js?v=1"></script>
+  <script src="../common/assistant-widget.js?v=1"></script>
+  <script src="https://cdn.botpress.cloud/webchat/v5.0/inject.js"></script>
+  <script src="https://files.bpcontent.cloud/2026/10/21/20/20261021202435-VY6UYVGS.js" defer></script>
 </body>
 </html>
