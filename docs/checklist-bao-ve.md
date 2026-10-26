@@ -1,15 +1,15 @@
 # Checklist 20 mục tự rà soát trước bảo vệ
 
-Đối chiếu mã nguồn trên nhánh main ngày 26/10/2026. Các mục 7–10 được đánh dấu vì trang đích tồn tại và mã đăng nhập có ánh xạ vai trò tới trang tương ứng. Việc đánh dấu này xác nhận mã nguồn, chưa thay thế kiểm thử đăng nhập trực tiếp. Các mục còn lại cần chạy ứng dụng hoặc lưu bằng chứng trước khi đánh dấu.
+Đối chiếu mã nguồn trên nhánh main ngày 26/10/2026. Người dùng xác nhận đã chạy thử các mục 1–6; các mục 7–10 được đối chiếu mã nguồn và sự tồn tại của trang đích. Các mục 7–10 xác nhận phần mã nguồn, chưa thay thế kiểm thử đăng nhập trực tiếp. Các mục còn lại cần kiểm tra và lưu bằng chứng trước khi đánh dấu.
 
 ## Chạy và điều hướng
 
-- [ ] 1. Mở trang giới thiệu bằng HTTPS/GitHub Pages hoặc Live Server, không dùng đường dẫn file://.
-- [ ] 2. Các liên kết nội bộ mở đúng trang, không có lỗi 404.
-- [ ] 3. Trang đăng nhập nhận thông tin hợp lệ và hiển thị lỗi dễ hiểu khi sai.
-- [ ] 4. Luồng đăng ký hoạt động với cấu hình Supabase của nhóm.
-- [ ] 5. Xác nhận email, quên mật khẩu và đặt lại mật khẩu được kiểm tra nếu bật các tính năng này.
-- [ ] 6. Lời mời thành viên mở đúng tài khoản, công ty và vai trò.
+- [x] 1. Mở trang giới thiệu bằng HTTPS/GitHub Pages hoặc Live Server, không dùng đường dẫn file://.
+- [x] 2. Các liên kết nội bộ mở đúng trang, không có lỗi 404.
+- [x] 3. Trang đăng nhập nhận thông tin hợp lệ và hiển thị lỗi dễ hiểu khi sai.
+- [x] 4. Luồng đăng ký hoạt động với cấu hình Supabase của nhóm.
+- [x] 5. Xác nhận email, quên mật khẩu và đặt lại mật khẩu được kiểm tra nếu bật các tính năng này.
+- [x] 6. Lời mời thành viên mở đúng tài khoản, công ty và vai trò.
 
 ## Vai trò và dữ liệu
 
@@ -33,4 +33,4 @@
 
 ## Bằng chứng
 
-Mục 7–10 được đối chiếu từ common/common.js và sự tồn tại của bốn trang index.html trên nhánh main. Ghi lại ngày kiểm thử trực tiếp, người kiểm tra, trình duyệt/thiết bị, tài khoản vai trò thử nghiệm (không ghi mật khẩu), kết quả và link ảnh/video hoặc commit liên quan cho các mục còn lại.
+Người dùng xác nhận đã chạy thử các mục 1–6. Mục 7–10 được đối chiếu từ common/common.js và sự tồn tại của bốn trang index.html trên nhánh main. Ghi lại ngày kiểm thử, người kiểm tra, trình duyệt/thiết bị, tài khoản vai trò thử nghiệm (không ghi mật khẩu), kết quả và link ảnh/video hoặc commit để bổ sung bằng chứng.
