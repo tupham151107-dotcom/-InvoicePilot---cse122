@@ -2,7 +2,7 @@
 
 Nhánh `feature/accountant-anhai27` chứa phân hệ Kế toán do thành viên phụ trách:
 
-**Họ và tên:** ____________________________________
+**Họ và tên:**: Nguyễn Hải An
 
 Dự án sử dụng HTML, CSS và JavaScript. Phân hệ Kế toán hỗ trợ theo dõi hóa đơn, khách hàng, thanh toán và công nợ; nội dung thay đổi trong nhánh này tập trung vào phần Kế toán.
 
