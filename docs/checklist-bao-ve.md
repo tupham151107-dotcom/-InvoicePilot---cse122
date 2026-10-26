@@ -1,6 +1,6 @@
 # Checklist 20 mục tự rà soát trước bảo vệ
 
-Đánh dấu hoàn thành sau khi đã kiểm tra trực tiếp trên bản chạy và lưu bằng chứng phù hợp. Không đánh dấu chỉ dựa trên mô tả trong README.
+Đối chiếu mã nguồn trên nhánh main ngày 26/10/2026. Các mục 7–10 được đánh dấu vì trang đích tồn tại và mã đăng nhập có ánh xạ vai trò tới trang tương ứng. Việc đánh dấu này xác nhận mã nguồn, chưa thay thế kiểm thử đăng nhập trực tiếp. Các mục còn lại cần chạy ứng dụng hoặc lưu bằng chứng trước khi đánh dấu.
 
 ## Chạy và điều hướng
 
@@ -13,10 +13,10 @@
 
 ## Vai trò và dữ liệu
 
-- [ ] 7. Tài khoản Quản trị viên vào đúng [admin/index.html](../admin/index.html).
-- [ ] 8. Tài khoản Quản lý vào đúng [manager/index.html](../manager/index.html).
-- [ ] 9. Tài khoản Kế toán vào đúng [accountant/index.html](../accountant/index.html).
-- [ ] 10. Tài khoản Kinh doanh vào đúng [sales/index.html](../sales/index.html).
+- [x] 7. Trang Quản trị viên có tại [admin/index.html](../admin/index.html); mã nguồn định tuyến vai trò admin tới trang này.
+- [x] 8. Trang Quản lý có tại [manager/index.html](../manager/index.html); mã nguồn định tuyến vai trò manager tới trang này.
+- [x] 9. Trang Kế toán có tại [accountant/index.html](../accountant/index.html); mã nguồn định tuyến vai trò accountant tới trang này.
+- [x] 10. Trang Kinh doanh có tại [sales/index.html](../sales/index.html); mã nguồn định tuyến vai trò sales tới trang này.
 - [ ] 11. Tài khoản không có vai trò hợp lệ không thể tự vào không gian khác.
 - [ ] 12. Dữ liệu giữa các vai trò/công ty tuân theo chính sách phân quyền đã cấu hình.
 - [ ] 13. Thao tác thêm, sửa, tìm kiếm và lọc dữ liệu nghiệp vụ hoạt động với dữ liệu thử.
@@ -33,4 +33,4 @@
 
 ## Bằng chứng
 
-Ghi lại ngày kiểm tra, người kiểm tra, trình duyệt/thiết bị, tài khoản vai trò thử nghiệm (không ghi mật khẩu), kết quả và link ảnh/video hoặc commit liên quan.
+Mục 7–10 được đối chiếu từ common/common.js và sự tồn tại của bốn trang index.html trên nhánh main. Ghi lại ngày kiểm thử trực tiếp, người kiểm tra, trình duyệt/thiết bị, tài khoản vai trò thử nghiệm (không ghi mật khẩu), kết quả và link ảnh/video hoặc commit liên quan cho các mục còn lại.
