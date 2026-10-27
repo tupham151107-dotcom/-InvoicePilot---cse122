@@ -156,9 +156,9 @@ Mỗi người ưu tiên sửa phân hệ được giao. Thay đổi trong `comm
 
 ## Checklist trước khi nộp
 
-- [ ] Xác nhận link deploy mở được trên máy tính và điện thoại, không có lỗi 404.
-- [ ] Rà soát screen inventory với website thực tế; bổ sung minh chứng và nhật ký AI của từng thành viên; user flow 4 vai trò đã có tại `docs/user-flow.md`.
+- [x] Xác nhận link deploy mở được trên máy tính và điện thoại, không có lỗi 404.
+- [x] Rà soát screen inventory với website thực tế; bổ sung minh chứng và nhật ký AI của từng thành viên; user flow 4 vai trò đã có tại `docs/user-flow.md`.
 - [x] Đã thêm link bảng Trello và playlist video OBS của cả SV1, SV2, SV3.
 - [x] Cập nhật họ tên và mã thành viên SV1–SV3.
-- [ ] Kiểm tra quyền truy cập Figma, GitHub, bảng công việc và video bằng cửa sổ ẩn danh.
-- [ ] Đảm bảo README mô tả đúng những gì đang chạy; không ghi tính năng mục tiêu thành tính năng đã hoàn thành.
+- [x] Kiểm tra quyền truy cập Figma, GitHub, bảng công việc và video bằng cửa sổ ẩn danh.
+- [x] Đảm bảo README mô tả đúng những gì đang chạy; không ghi tính năng mục tiêu thành tính năng đã hoàn thành.
